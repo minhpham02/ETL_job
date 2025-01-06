@@ -23,7 +23,7 @@ import com.etl.Utils.CustomSqlSink;
 import com.etl.entities.Account;
 import com.etl.entities.DimAccount;
 
-public class test {
+public class consumerAccount {
 
     public static void main(String[] args) throws Exception {
         // Set up Flink environment
@@ -146,7 +146,7 @@ public class test {
 
         // Sink DimAccount Stream to SQL
         dimAccountStream
-            .map(test::generateInsertQueryForDimAccount)
+            .map(consumerAccount::generateInsertQueryForDimAccount)
             .addSink(new CustomSqlSink());
 
         env.execute("Flink Kafka Consumer and Process");
