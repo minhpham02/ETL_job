@@ -79,9 +79,9 @@ public class test {
                                 dimAccountPs.setString(1, account.getId());
                                 ResultSet dimAccountRs = dimAccountPs.executeQuery();
 
-                                // If account exists in MP_DIM_ACCOUNT, update END_DT
+                                // If account exists in MP_DIM_ACCOUNT, update END_DT and UPDATE_TMS
                                 if (dimAccountRs.next()) {
-                                    String updateEndDateQuery = "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = SYSDATE WHERE ACCOUNT_NO = ?";
+                                    String updateEndDateQuery = "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = SYSDATE, UPDATE_TMS = SYSTIMESTAMP WHERE ACCOUNT_NO = ?";
                                     try (PreparedStatement updatePs = connection.prepareStatement(updateEndDateQuery)) {
                                         updatePs.setString(1, account.getId());
                                         updatePs.executeUpdate();

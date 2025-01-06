@@ -32,13 +32,12 @@ public class KafkaDataProducer {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
-        Producer<String,String> producer = new KafkaProducer<>(props);
-        Producer<Number,String> producerProduct = new KafkaProducer<>(props);
+        Producer<String, String> producer = new KafkaProducer<>(props);
 
-        // sendAccountData(producer);
+        sendAccountData(producer);
         sendAccrAcctCrData(producer);
-        // sendAzAccount(producer);
-        // sendProductData(producerProduct);
+        sendAzAccount(producer);
+        sendProductData(producer);
 
         producer.close();
     }
@@ -60,7 +59,7 @@ public class KafkaDataProducer {
         }
     }
 
-    private static void sendAccountData(Producer<String, String> producer){
+    private static void sendAccountData(Producer<String, String> producer) {
         String topic = "TRN_Account_MPC4";
         ObjectMapper mapper = new ObjectMapper();
 
@@ -71,13 +70,13 @@ public class KafkaDataProducer {
             String value = mapper.writeValueAsString(account);
 
             producer.send(new ProducerRecord<>(topic, account.getId(), value));
-            System.out.println("Send Account Data" + value);
+            System.out.println("Send Account Data: " + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void sendAccrAcctCrData(Producer<String, String> producer){
+    private static void sendAccrAcctCrData(Producer<String, String> producer) {
         String topic = "TRN_AccrAcctCr_MPC4";
         ObjectMapper mapper = new ObjectMapper();
 
@@ -87,52 +86,53 @@ public class KafkaDataProducer {
             String value = mapper.writeValueAsString(accrAcctCr);
 
             producer.send(new ProducerRecord<>(topic, accrAcctCr.getAccountNumber(), value));
-            System.out.println("Send AccrAcctCr Data" + value);
+            System.out.println("Send AccrAcctCr Data: " + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
-    private static void sendAzAccount(Producer<String,String>producer){
+    private static void sendAzAccount(Producer<String, String> producer) {
         String topic = "TRN_AzAccount_MPC4";
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AzAccount azAcount = new AzAccount("6",4);
+            AzAccount azAccount = new AzAccount("6", null);
 
-            String value = mapper.writeValueAsString(azAcount);
+            String value = mapper.writeValueAsString(azAccount);
 
-            producer.send(new ProducerRecord<>(topic, azAcount.getId(), value));
-            System.out.println("Send AzAcount Data" + value);
+            producer.send(new ProducerRecord<>(topic, azAccount.getId(), value));
+            System.out.println("Send AzAccount Data: " + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public static void sendProductData(Producer<Number, String> producer) {
+    private static void sendProductData(Producer<String, String> producer) {
         String topic = "TRN_Product_MPC4";
         ObjectMapper mapper = new ObjectMapper();
 
         try {
             Product product = new Product(
-                    1,                           
-                    "34D",                   
-                    "Savings Account",             
-                    "SubProduct1",                
-                    "A",                           
-                    new Date(System.currentTimeMillis()),        
-                    null,                          
-                    new Timestamp(System.currentTimeMillis())    
+                    1,                            // ProductNo (Integer)
+                    "34D",                        // ProductCode
+                    "Savings Account",            // ProductName
+                    "SubProduct1",                // SubProduct
+                    "A",                          // Status
+                    new Date(System.currentTimeMillis()), // EffDate
+                    null,                         // ExpDate
+                    new Timestamp(System.currentTimeMillis()) // UpdatedOn
             );
 
             String value = mapper.writeValueAsString(product);
 
-            producer.send(new ProducerRecord<>(topic, product.getProductNo(), value));
+            // Convert ProductNo (Integer) to String for the key
+            String key = String.valueOf(product.getProductNo());
+
+            producer.send(new ProducerRecord<>(topic, key, value));
             System.out.println("Send Product Data: " + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 }
-

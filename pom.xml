@@ -19,6 +19,9 @@
   </properties>
 
   <dependencies>
+    <groupId>com.twitter</groupId>
+    <artifactId>chill-java</artifactId>
+    <version>0.10.0</version>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
