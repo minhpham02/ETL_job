@@ -1,0 +1,3 @@
+com\etl\entities\Account.class
+com\etl\Util\CustomSqlSink.class
+com\etl\entities\DimAccount.class
