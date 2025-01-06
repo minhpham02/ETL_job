@@ -1,7 +1,6 @@
 package com.etl;
 
 import java.sql.Date;
-import java.sql.Timestamp;
 import java.util.Properties;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;

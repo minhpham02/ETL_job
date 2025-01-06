@@ -1,11 +1,8 @@
 package com.etl.Utils;
 
-import java.io.IOException;
-import java.util.Properties;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class KafkaSourceUtil {
     public static <T> KafkaSource<T> createKafkaSource(String bootstrapServers, String groupId, String topic, DeserializationSchema<T> deserializationSchema) {
