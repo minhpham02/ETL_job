@@ -108,31 +108,27 @@ public class KafkaDataProducer {
         }
     }
 
-    private static void sendProductData(Producer<String, String> producer) {
-        String topic = "TRN_Product_MPC4";
+    private static void sendProductData(Producer<String, String> producer){
+        String topic = "TRN_product_01";
+        // Tên topic Kafka mà dữ liệu sẽ được gửi đến
         ObjectMapper mapper = new ObjectMapper();
+        // Dùng Jackson để chuyển đổi object Account thành chuỗi JSON
 
-        try {
-            Product product = new Product(
-                    1,                            // ProductNo (Integer)
-                    "34D",                        // ProductCode
-                    "Savings Account",            // ProductName
-                    "SubProduct1",                // SubProduct
-                    "A",                          // Status
-                    new Date(System.currentTimeMillis()), // EffDate
-                    null,                         // ExpDate
-                    new Timestamp(System.currentTimeMillis()) // UpdatedOn
-            );
-
+        // try-catch: Bắt lỗi nếu có vấn đề xảy ra trong quá trình gửi dữ liệu
+        try { 
+            Product product = new Product(4, "45", "Credit Card", "D", "B");
+            
             String value = mapper.writeValueAsString(product);
 
-            // Convert ProductNo (Integer) to String for the key
-            String key = String.valueOf(product.getProductNo());
+            producer.send(new ProducerRecord<>(topic, String.valueOf(product.getProductNo()), value));
+            // Gửi bản ghi (ProducerRecord) chứa:
+                // Topic: "TRN_Account_MPC3".
+                // Key: account.getId() (mã tài khoản).
+                // Value: JSON string của object Account
 
-            producer.send(new ProducerRecord<>(topic, key, value));
-            System.out.println("Send Product Data: " + value);
+            System.out.println("Send Account Data" + value); //Log dữ liệu
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(); // In chi tiết lỗi để giúp debug
         }
     }
 }

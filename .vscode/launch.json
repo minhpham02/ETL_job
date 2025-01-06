@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "consumerProduct",
+            "request": "launch",
+            "mainClass": "com.etl.consumerProduct",
+            "projectName": "dim_account"
+        },
+        {
+            "type": "java",
             "name": "consumerAccount",
             "request": "launch",
             "mainClass": "com.etl.consumerAccount",
