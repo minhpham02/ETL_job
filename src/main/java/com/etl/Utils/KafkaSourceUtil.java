@@ -1,4 +1,4 @@
-package com.etl.Util;
+package com.etl.Utils;
 
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.connector.kafka.source.KafkaSource;

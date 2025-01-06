@@ -36,9 +36,9 @@ public class KafkaDataProducer {
         Producer<Number,String> producerProduct = new KafkaProducer<>(props);
 
         // sendAccountData(producer);
-        // sendAccrAcctCrData(producer);
+        sendAccrAcctCrData(producer);
         // sendAzAccount(producer);
-        sendProductData(producerProduct);
+        // sendProductData(producerProduct);
 
         producer.close();
     }
@@ -99,7 +99,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AzAccount azAcount = new AzAccount("6",null);
+            AzAccount azAcount = new AzAccount("6",4);
 
             String value = mapper.writeValueAsString(azAcount);
 

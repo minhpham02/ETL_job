@@ -13,7 +13,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
 
-import com.etl.Util.KafkaSourceUtil;
+import com.etl.Utils.KafkaSourceUtil;
 import com.etl.entities.DimProduct;
 import com.etl.entities.Product;
 

@@ -1,4 +1,4 @@
-package com.etl.Util;
+package com.etl.Utils;
 
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 
