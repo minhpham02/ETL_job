@@ -1,0 +1,60 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "ConsumerAccount",
+            "request": "launch",
+            "mainClass": "com.etl.ConsumerAccount",
+            "projectName": "dim_account",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "ConsumerProduct",
+            "request": "launch",
+            "mainClass": "com.etl.ConsumerProduct",
+            "projectName": "dim_account",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "CreateKafkaProducer",
+            "request": "launch",
+            "mainClass": "com.etl.CreateKafkaProducer",
+            "projectName": "dim_account",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "KafkaAccountConsumer",
+            "request": "launch",
+            "mainClass": "com.etl.KafkaAccountConsumer",
+            "projectName": "dim_account",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "KafkaDataProducer",
+            "request": "launch",
+            "mainClass": "com.etl.KafkaDataProducer",
+            "projectName": "dim_account",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
+            "name": "KafkaTransactionConsumer",
+            "request": "launch",
+            "mainClass": "com.etl.KafkaTransactionConsumer",
+            "projectName": "dim_account",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        }
+    ]
+}

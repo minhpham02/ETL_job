@@ -1,7 +1,6 @@
 package com.etl.entities;
 
 import java.sql.Date;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,7 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Product {
-    private Number productNo;           // PRODUCT_NO
+    private Long productNo;  // Thay đổi từ Number thành Long
     private String locTerm;     // PRODUCT_CATEGORY
     private String category;         // PRODUCT_CODE
     private String subProduct;         // PRODUCT_TYPE

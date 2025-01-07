@@ -28,22 +28,30 @@ public class KafkaDataProducer {
             return;
         }
 
+        // Configure producers
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "192.168.26.181:9092");
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.StringSerializer");
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+
+        Properties propsProduct = new Properties();
+        propsProduct.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "192.168.26.181:9092");
+        propsProduct.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.LongSerializer");
+        propsProduct.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
         Producer<String, String> producer = new KafkaProducer<>(props);
-        Producer<Number, String> producerProduct = new KafkaProducer<>(props);
+        Producer<Long, String> producerProduct = new KafkaProducer<>(propsProduct);
 
-        // sendAccountData(producer);
-        // sendAccrAcctCrData(producer);
-        // sendAzAccount(producer);
-        // sendProductData(producerProduct);
+        // Send data
+        sendAccountData(producer);
+        sendAccrAcctCrData(producer);
+        sendAzAccount(producer);
+        sendProductData(producerProduct);
         sendTellerData(producer);
 
+        // Close producers
         producer.close();
+        producerProduct.close();
     }
 
     private static boolean isKafkaServerUp(String bootstrapServers) {
@@ -94,7 +102,6 @@ public class KafkaDataProducer {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     private static void sendAzAccount(Producer<String, String> producer) {
@@ -102,31 +109,32 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AzAccount azAcount = new AzAccount("6", 4);
+            AzAccount azAccount = new AzAccount("6", 4);
 
-            String value = mapper.writeValueAsString(azAcount);
+            String value = mapper.writeValueAsString(azAccount);
 
-            producer.send(new ProducerRecord<>(topic, azAcount.getId(), value));
-            System.out.println("Send AzAcount Data" + value);
+            producer.send(new ProducerRecord<>(topic, azAccount.getId(), value));
+            System.out.println("Send AzAccount Data" + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public static void sendProductData(Producer<Number, String> producer) {
-        String topic = "TRN_Product_MPC4";
+    public static void sendProductData(Producer<Long, String> producer) {
+        String topic = "TRN_product_01";
         ObjectMapper mapper = new ObjectMapper();
 
         try {
             Product product = new Product(
-                    1,
-                    "34D",
-                    "Savings Account",
-                    "SubProduct1",
-                    "A",
-                    new Date(System.currentTimeMillis()),
-                    null,
-                    new Timestamp(System.currentTimeMillis()));
+                1L,                                  // productNo: Long
+                "34",                                // locTerm: String
+                "Saving Account",                    // category: String
+                "SubProduct1",                       // subProduct: String
+                "A",                                 // opType: String
+                new Date(System.currentTimeMillis()), // effectiveDate: Date
+                null,                                // endDate: Date (null)
+                new Timestamp(System.currentTimeMillis()) // updateTimestamp: Timestamp
+            );
 
             String value = mapper.writeValueAsString(product);
 
@@ -138,35 +146,31 @@ public class KafkaDataProducer {
     }
 
     private static void sendTellerData(Producer<String, String> producer) {
-    String topic = "TRN_Teller_MPC4"; // Tên topic Kafka
-    ObjectMapper mapper = new ObjectMapper();
+        String topic = "TRN_Teller_MPC4";
+        ObjectMapper mapper = new ObjectMapper();
 
-    try {
-        // Tạo đối tượng Teller với các giá trị mẫu
-        Teller teller = new Teller(
-            20240415,  // VALUE_DATE_2
-            "USD",                                 // CURRENCY_1
-            "T1234",                               // TRANSACTION_CODE
-            "1",                                   // ID
-            1000.5,                                // AMOUNT_FCY_1
-            300000.00,                             // AMOUNT_FCY_2
-            1.25,                                  // RATE_2
-            "CUST001",                             // CUSTOMER_2
-            "John Doe",                            // AUTHORISER
-            "A",                                   // OP_TYPE
-            "ACC123",                              // ACCOUNT_1
-            "ACC456"                               // ACCOUNT_2
-        );
+        try {
+            Teller teller = new Teller(
+                20240415,  // VALUE_DATE_2
+                "USD",                                 // CURRENCY_1
+                "T1234",                               // TRANSACTION_CODE
+                "1",                                   // ID
+                1000.5,                                // AMOUNT_FCY_1
+                300000.00,                             // AMOUNT_FCY_2
+                1.25,                                  // RATE_2
+                "CUST001",                             // CUSTOMER_2
+                "John Doe",                            // AUTHORISER
+                "A",                                   // OP_TYPE
+                "ACC123",                              // ACCOUNT_1
+                "ACC456"                               // ACCOUNT_2
+            );
 
-        // Serialize đối tượng Teller thành chuỗi JSON
-        String value = mapper.writeValueAsString(teller);
+            String value = mapper.writeValueAsString(teller);
 
-        // Gửi dữ liệu đến Kafka
-        producer.send(new ProducerRecord<>(topic, teller.getId(), value));
-        System.out.println("Sent Teller Data: " + value);
-        } 
-        catch (Exception e) {
-        e.printStackTrace();
+            producer.send(new ProducerRecord<>(topic, teller.getId(), value));
+            System.out.println("Sent Teller Data: " + value);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    }   
+    }
 }
