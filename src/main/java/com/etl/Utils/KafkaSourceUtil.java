@@ -13,5 +13,11 @@ public class KafkaSourceUtil {
             .setStartingOffsets(OffsetsInitializer.earliest())
             .setValueOnlyDeserializer(deserializationSchema)
             .build();
+
+    // // Hàm deserialization để chuyển đổi JSON thành đối tượng
+    // public static <T> T deserialize(String json, Class<T> clazz) throws IOException {
+    //     ObjectMapper mapper = new ObjectMapper();
+    //     return mapper.readValue(json, clazz);
+    // }
     }
 }

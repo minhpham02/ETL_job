@@ -1,7 +1,6 @@
 package com.etl;
 
 import java.sql.Date;
-import java.sql.Timestamp;
 import java.util.Properties;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,7 +73,7 @@ public class KafkaDataProducer {
             String value = mapper.writeValueAsString(account);
 
             producer.send(new ProducerRecord<>(topic, account.getId(), value));
-            System.out.println("Send Account Data" + value);
+            System.out.println("Send Account Data: " + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -90,11 +89,10 @@ public class KafkaDataProducer {
             String value = mapper.writeValueAsString(accrAcctCr);
 
             producer.send(new ProducerRecord<>(topic, accrAcctCr.getAccountNumber(), value));
-            System.out.println("Send AccrAcctCr Data" + value);
+            System.out.println("Send AccrAcctCr Data: " + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     private static void sendAzAccount(Producer<String, String> producer) {
@@ -102,40 +100,46 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AzAccount azAcount = new AzAccount("6", 4);
+            AzAccount azAccount = new AzAccount("6", 4);
 
-            String value = mapper.writeValueAsString(azAcount);
+            String value = mapper.writeValueAsString(azAccount);
 
-            producer.send(new ProducerRecord<>(topic, azAcount.getId(), value));
-            System.out.println("Send AzAcount Data" + value);
+            producer.send(new ProducerRecord<>(topic, azAccount.getId(), value));
+            System.out.println("Send AzAccount Data: " + value);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public static void sendProductData(Producer<Number, String> producer) {
-        String topic = "TRN_Product_MPC4";
-        ObjectMapper mapper = new ObjectMapper();
+    // private static void sendProductData(Producer<String, String> producer){
+    //     String topic = "TRN_product_01";
+    //     // Tên topic Kafka mà dữ liệu sẽ được gửi đến
+    //     ObjectMapper mapper = new ObjectMapper();
 
-        try {
-            Product product = new Product(
-                    1,
-                    "34D",
-                    "Savings Account",
-                    "SubProduct1",
-                    "A",
-                    new Date(System.currentTimeMillis()),
-                    null,
-                    new Timestamp(System.currentTimeMillis()));
+    //     try {
+    //         Product product = new Product(
+    //                 1,
+    //                 "34D",
+    //                 "Savings Account",
+    //                 "SubProduct1",
+    //                 "A",
+    //                 new Date(System.currentTimeMillis()),
+    //                 null,
+    //                 new Timestamp(System.currentTimeMillis()));
 
-            String value = mapper.writeValueAsString(product);
+    //         String value = mapper.writeValueAsString(product);
 
-            producer.send(new ProducerRecord<>(topic, product.getProductNo(), value));
-            System.out.println("Send Product Data: " + value);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+    //         producer.send(new ProducerRecord<>(topic, String.valueOf(product.getProductNo()), value));
+    //         // Gửi bản ghi (ProducerRecord) chứa:
+    //             // Topic: "TRN_Account_MPC3".
+    //             // Key: account.getId() (mã tài khoản).
+    //             // Value: JSON string của object Account
+
+    //         System.out.println("Send Account Data" + value); //Log dữ liệu
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //     }
+    // }
 
     private static void sendTellerData(Producer<String, String> producer) {
     String topic = "TRN_Teller_MPC4"; // Tên topic Kafka
