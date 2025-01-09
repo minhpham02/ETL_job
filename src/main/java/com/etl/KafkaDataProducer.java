@@ -76,7 +76,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            Account account = new Account("30", "Adaman", "30", "USD", 5000L, new Date(System.currentTimeMillis()),
+            Account account = new Account("39", "Hacker7", "39", "USD", 5000L, new Date(System.currentTimeMillis()),
                     "A", 4500L, "1000", "1008", "001");
 
             String value = mapper.writeValueAsString(account);
@@ -93,7 +93,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AccrAcctCr accrAcctCr = new AccrAcctCr("30", 34);
+            AccrAcctCr accrAcctCr = new AccrAcctCr("38", 38);
 
             String value = mapper.writeValueAsString(accrAcctCr);
 
@@ -109,7 +109,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AzAccount azAccount = new AzAccount("30", 30);
+            AzAccount azAccount = new AzAccount("38", 338);
 
             String value = mapper.writeValueAsString(azAccount);
 
@@ -126,11 +126,11 @@ public class KafkaDataProducer {
 
         try {
             Product product = new Product(
-                1L,                                  // productNo: Long
-                "34",                                // locTerm: String
+                2L,                                  // productNo: Long
+                "62",                                // locTerm: String
                 "Saving Account",                    // category: String
-                "SubProduct1",                       // subProduct: String
-                "A",                                 // opType: String
+                "SubProduct2",                       // subProduct: String
+                "C",                                 // opType: String
                 new Date(System.currentTimeMillis()), // effectiveDate: Date
                 null,                                // endDate: Date (null)
                 new Timestamp(System.currentTimeMillis()) // updateTimestamp: Timestamp

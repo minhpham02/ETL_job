@@ -3,6 +3,14 @@
     "configurations": [
         {
             "type": "java",
+            "name": "UpdateAZaccountAccrConsumer",
+            "request": "launch",
+            "mainClass": "com.etl.UpdateAZaccountAccrConsumer",
+            "projectName": "dim_account",
+            "vmArgs": "--add-opens java.base/java.util=ALL-UNNAMED"
+        },
+        {
+            "type": "java",
             "name": "Current File",
             "request": "launch",
             "mainClass": "${file}",
