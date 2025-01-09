@@ -143,19 +143,34 @@ public class KafkaDataProducer {
 
     try {
         // Tạo đối tượng Teller với các giá trị mẫu
+        // Teller teller = new Teller(
+        //     20240415,  // VALUE_DATE_2
+        //     "USD",                                 // CURRENCY_1
+        //     "T1234",                               // TRANSACTION_CODE
+        //     "1",                                   // ID
+        //     null,                                // AMOUNT_FCY_1
+        //     300000.00,                             // AMOUNT_FCY_2
+        //     1.25,                                  // RATE_2
+        //     "CUST001",                             // CUSTOMER_2
+        //     "John Doe",                            // AUTHORISER
+        //     "A",                                   // OP_TYPE
+        //     "123",                              // ACCOUNT_1
+        //     "456"                               // ACCOUNT_2
+        // );
+
         Teller teller = new Teller(
-            20240415,  // VALUE_DATE_2
-            "USD",                                 // CURRENCY_1
-            "T1234",                               // TRANSACTION_CODE
+            null,  // VALUE_DATE_2
+            "VND",                                 // CURRENCY_1
+            null,                               // TRANSACTION_CODE
             "1",                                   // ID
             null,                                // AMOUNT_FCY_1
-            300000.00,                             // AMOUNT_FCY_2
-            1.25,                                  // RATE_2
-            "CUST001",                             // CUSTOMER_2
-            "John Doe",                            // AUTHORISER
-            "A",                                   // OP_TYPE
-            "123",                              // ACCOUNT_1
-            "456"                               // ACCOUNT_2
+            null,                             // AMOUNT_FCY_2
+            null,                                  // RATE_2
+            null,                             // CUSTOMER_2
+            null,                            // AUTHORISER
+            null,                                   // OP_TYPE
+            null,                              // ACCOUNT_1
+            null                               // ACCOUNT_2
         );
 
         // Serialize đối tượng Teller thành chuỗi JSON

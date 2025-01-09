@@ -72,26 +72,26 @@ public class KafkaTransactionConsumer {
                 String Authoriser = teller.getAuthoriser();
                 String AuthStat = "";
                 Date valueDate2 = null;
-
+            
                 if (teller.getId() == null || teller.getId().isEmpty()) { 
                     return; 
                 }
-
+            
                 if (!"D".equals(OpType)) {
                     RecordStat = "O";
                 } else if ("D".equals(OpType)) {
                     RecordStat = "C";
                 }
-
+            
                 if (teller.getValueDate2() != null) { 
                     String valueDate2Str = teller.getValueDate2().toString(); 
                     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd"); 
                     valueDate2 = new Date(dateFormat.parse(valueDate2Str).getTime());
                 }
-
+            
                 String currency1 = teller.getCurrency1() != null ? teller.getCurrency1() : ""; 
                 String transactionCode = teller.getTransactionCode() != null ? teller.getTransactionCode() : ""; 
-
+            
                 BigDecimal rate = (teller.getRate2() != null) ? new BigDecimal(teller.getRate2().toString()) : BigDecimal.ONE; 
                 BigDecimal amountFcy2 = (teller.getAmountFcy2() != null) ? new BigDecimal(teller.getAmountFcy2().toString()) : BigDecimal.ZERO;
                 
@@ -107,15 +107,21 @@ public class KafkaTransactionConsumer {
                         RecordStat = "";
                     }
                 }
-
+            
                 AuthStat =  (Authoriser != null) ? "A" : "U"; 
                 String account1 = teller.getAccount1() != null ? teller.getAccount1() : ""; 
                 String account2 = teller.getAccount2() != null ? teller.getAccount2() : "";
-
-                String insertSql = "INSERT INTO FSSTRAINING.MP_FACT_TRANSACTION (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE)" + 
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE)";
-
-                PreparedStatement statement = connection.prepareStatement(insertSql);
+            
+                String mergeSql = "MERGE INTO FSSTRAINING.MP_FACT_TRANSACTION target "
+                                  + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
+                                  + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
+                                  + "WHEN MATCHED THEN "
+                                  + "UPDATE SET TXN_CCY = source.TXN_CCY, PRODUCT_CODE = source.PRODUCT_CODE, LCY_AMOUNT = source.LCY_AMOUNT, TXN_AMOUNT = source.TXN_AMOUNT, CST_DIM_ID = source.CST_DIM_ID, RECORD_STAT = source.RECORD_STAT, AUTH_STAT = source.AUTH_STAT, TXN_ACC = source.TXN_ACC, OFS_ACC = source.OFS_ACC, TRN_DT = source.TRN_DT, ETL_DATE = CURRENT_DATE "
+                                  + "WHEN NOT MATCHED THEN "
+                                  + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
+                                  + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
+            
+                PreparedStatement statement = connection.prepareStatement(mergeSql);
                 statement.setString(1, currency1);
                 statement.setString(2, transactionCode);
                 statement.setString(3, teller.getId());
@@ -127,7 +133,7 @@ public class KafkaTransactionConsumer {
                 statement.setString(9, account1);
                 statement.setString(10, account2);
                 statement.setDate(11, valueDate2);
-
+            
                 System.out.println("Success");
                 statement.executeUpdate();
                 statement.close();
