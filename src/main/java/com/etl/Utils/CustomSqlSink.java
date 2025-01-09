@@ -10,21 +10,26 @@ import java.util.logging.Logger;
 public class CustomSqlSink extends RichSinkFunction<String> {
 
     private static final Logger logger = Logger.getLogger(CustomSqlSink.class.getName());
-
+    private static boolean isConnectionLogged = false; // Biến cờ tĩnh
     private Connection connection;
     private int insertCount;
 
     @Override
     public void open(org.apache.flink.configuration.Configuration parameters) throws Exception {
         super.open(parameters);
-        // Kết nối đến cơ sở dữ liệu
         try {
             connection = DriverManager.getConnection(
                 "jdbc:oracle:thin:@192.168.1.214:1521:dwh",
                 "fsstraining",
                 "fsstraining"
             );
-            logger.info("Connected to the database successfully.");
+            // Log chỉ khi kết nối lần đầu tiên được tạo
+            synchronized (CustomSqlSink.class) {
+                if (!isConnectionLogged) {
+                    logger.info("Connected to the database successfully.");
+                    isConnectionLogged = true; // Đánh dấu là đã log
+                }
+            }
         } catch (SQLException e) {
             logger.severe("Failed to connect to the database: " + e.getMessage());
             throw new RuntimeException("Database connection failed", e);
@@ -34,7 +39,6 @@ public class CustomSqlSink extends RichSinkFunction<String> {
 
     @Override
     public void invoke(String sql, Context context) throws Exception {
-        // Sử dụng PreparedStatement để thực thi SQL
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.executeUpdate();
             insertCount++;
@@ -48,7 +52,6 @@ public class CustomSqlSink extends RichSinkFunction<String> {
     @Override
     public void close() throws Exception {
         super.close();
-        // Đóng kết nối cơ sở dữ liệu
         if (connection != null && !connection.isClosed()) {
             try {
                 connection.close();
