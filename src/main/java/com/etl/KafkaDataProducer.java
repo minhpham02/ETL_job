@@ -148,14 +148,14 @@ public class KafkaDataProducer {
             "USD",                                 // CURRENCY_1
             "T1234",                               // TRANSACTION_CODE
             "1",                                   // ID
-            1000.5,                                // AMOUNT_FCY_1
+            null,                                // AMOUNT_FCY_1
             300000.00,                             // AMOUNT_FCY_2
             1.25,                                  // RATE_2
             "CUST001",                             // CUSTOMER_2
             "John Doe",                            // AUTHORISER
             "A",                                   // OP_TYPE
-            "ACC123",                              // ACCOUNT_1
-            "ACC456"                               // ACCOUNT_2
+            "123",                              // ACCOUNT_1
+            "456"                               // ACCOUNT_2
         );
 
         // Serialize đối tượng Teller thành chuỗi JSON
