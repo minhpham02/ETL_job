@@ -37,11 +37,7 @@ public class KafkaAccountConsumer {
                         "AccrAcctCr Source")
                 .map(json -> mapper.readValue(json, AccrAcctCr.class));
 
-        // KeyedStream<AccrAcctCr, String> keyedAccrAcctCrStream =
-        // accrAcctCrStream.keyBy(value -> "constant_key");
-        // DataStream<AccrAcctCr> latestAccrAcctCrStream =
-        // keyedAccrAcctCrStream.process(new LatestMessageProcessFunction<>());
-
+        // Kafka source cho AzAccount
         DataStream<AzAccount> azAccountStream = env
                 .fromSource(
                         KafkaSourceUtil.createKafkaSource(bootstrapServers, groupId, "TRN_AzAccount_MPC4",
@@ -50,21 +46,17 @@ public class KafkaAccountConsumer {
                         "AzAccount Source")
                 .map(json -> mapper.readValue(json, AzAccount.class));
 
-        // KeyedStream<AzAccount, String> keyedAzAccountStream =
-        // azAccountStream.keyBy(value -> "constant_key");
-        // DataStream<AzAccount> lastestAzAccount = keyedAzAccountStream.process(new
-        // LatestMessageProcessFunction<>());
-
-        @SuppressWarnings({ "unchecked", "rawtypes" })
+        // Xử lý song song cho AzAccount
         DataStream<DimAccount> dimAccountFromAzAccount = azAccountStream
-                .flatMap(new DimAccountQueryFunction())
+                .flatMap(new DimAccountAzAccountQueryFunction())
                 .returns(DimAccount.class);
 
-        @SuppressWarnings({ "unchecked", "rawtypes" })
+        // Xử lý song song cho AccrAcctCr
         DataStream<DimAccount> dimAccountFromAccrAcctCr = accrAcctCrStream
-                .flatMap(new DimAccountQueryFunction())
+                .flatMap(new DimAccountAccrAcctCrQueryFunction())
                 .returns(DimAccount.class);
 
+        // Kết hợp các luồng
         DataStream<DimAccount> dimAccountStream = dimAccountFromAccrAcctCr.union(dimAccountFromAzAccount);
 
         dimAccountStream.print();
@@ -72,20 +64,9 @@ public class KafkaAccountConsumer {
         env.execute("Filtered DimAccount Streaming");
     }
 
-    // private static class LatestMessageProcessFunction<T> extends
-    // ProcessFunction<T, T> {
-    // private transient T latestMessage;
-
-    // @Override
-    // public void processElement(T value, Context ctx, Collector<T> out) {
-    // latestMessage = value;
-    // out.collect(latestMessage);
-    // }
-    // }
-
-    public static class DimAccountQueryFunction<T> extends RichFlatMapFunction<T, DimAccount> {
+    // Xử lý song song cho AzAccount
+    public static class DimAccountAzAccountQueryFunction extends RichFlatMapFunction<AzAccount, DimAccount> {
         private transient Connection connection;
-        // private final ObjectMapper mapper = new ObjectMapper();
 
         @Override
         public void open(Configuration parameters) throws Exception {
@@ -98,58 +79,100 @@ public class KafkaAccountConsumer {
         }
 
         @Override
-        public void flatMap(T value, Collector<DimAccount> out) throws Exception {
-            String key = "";
-            Number rate = null;
+        public void flatMap(AzAccount azAccount, Collector<DimAccount> out) throws Exception {
+            String key = azAccount.getId();
+            Number rate = azAccount.getInterestNumber();
 
-            if (value instanceof AzAccount) {
-                AzAccount azAccount = (AzAccount) value;
-                key = azAccount.getId();
-                rate = azAccount.getInterestNumber();
-            }
-
-            if (value instanceof AccrAcctCr) {
-                AccrAcctCr accrAcctCr = (AccrAcctCr) value;
-                key = accrAcctCr.getAccountNumber();
-                rate = accrAcctCr.getCrIntRate();
-            }
-
-            PreparedStatement statement = connection.prepareStatement("SELECT ACCOUNT_NO, RATE FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?");
+            // Kiểm tra trong bảng TRN_AZ_ACCOUNT
+            PreparedStatement statement = connection.prepareStatement("SELECT ID, INTEREST_RATE FROM FSSTRAINING.TRN_AZ_ACCOUNT WHERE ID = ?");
             statement.setString(1, key);
             ResultSet resultSet = statement.executeQuery();
-            DimAccount dimAccount = null;
             if (resultSet.next()) {
-                dimAccount = new DimAccount();
-                dimAccount.setAccountNo(resultSet.getString("ACCOUNT_NO"));
-                dimAccount.setRate(resultSet.getBigDecimal("RATE"));
-                System.out.println("dimAccount.getRate before update: " + dimAccount.getRate());
-                out.collect(dimAccount);
+                // Nếu đã tồn tại, kiểm tra giá trị INTEREST_RATE
+                Number existingRate = resultSet.getBigDecimal("INTEREST_RATE");
+                if (!existingRate.equals(rate)) {
+                    PreparedStatement updateStatement = connection
+                            .prepareStatement("UPDATE FSSTRAINING.TRN_AZ_ACCOUNT SET INTEREST_RATE = ? WHERE ID = ?");
+                    updateStatement.setObject(1, rate);
+                    updateStatement.setString(2, key);
+                    updateStatement.executeUpdate();
+                }
+            } else {
+                // Nếu không tồn tại, insert dữ liệu mới
+                PreparedStatement insertStatement = connection
+                        .prepareStatement("INSERT INTO FSSTRAINING.TRN_AZ_ACCOUNT (ID, INTEREST_RATE) VALUES (?, ?)");
+                insertStatement.setString(1, key);
+                insertStatement.setObject(2, rate);
+                insertStatement.executeUpdate();
             }
+
+            // Trả về dữ liệu DimAccount nếu cần thiết
+            DimAccount dimAccount = new DimAccount();
+            dimAccount.setAccountNo(key);
+            dimAccount.setRate(rate);
+            out.collect(dimAccount);
+
             statement.close();
-            System.out.println("rate before update: " + rate);
+        }
 
-            if (value instanceof AccrAcctCr) {
-                if (rate != null && (dimAccount == null || dimAccount.getRate() == null)) {
+        @Override
+        public void close() throws Exception {
+            super.close();
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    // Xử lý song song cho AccrAcctCr
+    public static class DimAccountAccrAcctCrQueryFunction extends RichFlatMapFunction<AccrAcctCr, DimAccount> {
+        private transient Connection connection;
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            super.open(parameters);
+            OracleDataSource dataSource = new OracleDataSource();
+            dataSource.setURL("jdbc:oracle:thin:@192.168.1.214:1521:dwh");
+            dataSource.setUser("fsstraining");
+            dataSource.setPassword("fsstraining");
+            connection = dataSource.getConnection();
+        }
+
+        @Override
+        public void flatMap(AccrAcctCr accrAcctCr, Collector<DimAccount> out) throws Exception {
+            String key = accrAcctCr.getAccountNumber();
+            Number rate = accrAcctCr.getCrIntRate();
+
+            // Kiểm tra trong bảng TRN_ACCR_ACCT_CR
+            PreparedStatement statement = connection.prepareStatement("SELECT ACCOUNT_NUMBER, CR_INT_RATE FROM FSSTRAINING.TRN_ACCR_ACCT_CR WHERE ACCOUNT_NUMBER = ?");
+            statement.setString(1, key);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                // Nếu đã tồn tại, kiểm tra giá trị CR_INT_RATE
+                Number existingRate = resultSet.getBigDecimal("CR_INT_RATE");
+                if (!existingRate.equals(rate)) {
                     PreparedStatement updateStatement = connection
-                            .prepareStatement("UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET RATE = ? WHERE ACCOUNT_NO = ?");
+                            .prepareStatement("UPDATE FSSTRAINING.TRN_ACCR_ACCT_CR SET CR_INT_RATE = ? WHERE ACCOUNT_NUMBER = ?");
                     updateStatement.setObject(1, rate);
                     updateStatement.setString(2, key);
                     updateStatement.executeUpdate();
                 }
-            } else if (value instanceof AzAccount) {
-                if (rate != null) {
-                    PreparedStatement updateStatement = connection
-                            .prepareStatement("UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET RATE = ? WHERE ACCOUNT_NO = ?");
-                    updateStatement.setObject(1, rate);
-                    updateStatement.setString(2, key);
-                    updateStatement.executeUpdate();
-                }
+            } else {
+                // Nếu không tồn tại, insert dữ liệu mới
+                PreparedStatement insertStatement = connection
+                        .prepareStatement("INSERT INTO FSSTRAINING.TRN_ACCR_ACCT_CR (ACCOUNT_NUMBER, CR_INT_RATE) VALUES (?, ?)");
+                insertStatement.setString(1, key);
+                insertStatement.setObject(2, rate);
+                insertStatement.executeUpdate();
             }
 
-            if(dimAccount != null) { 
-                System.out.println("dimAccount.getRate after update: " + dimAccount.getRate()); 
-            } 
-                System.out.println("rate after update: " + rate);
+            // Trả về dữ liệu DimAccount nếu cần thiết
+            DimAccount dimAccount = new DimAccount();
+            dimAccount.setAccountNo(key);
+            dimAccount.setRate(rate);
+            out.collect(dimAccount);
+
+            statement.close();
         }
 
         @Override

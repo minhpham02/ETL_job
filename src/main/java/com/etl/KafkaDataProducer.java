@@ -76,7 +76,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            Account account = new Account("14", "Adam", "32", "USD", 5000L, new Date(System.currentTimeMillis()),
+            Account account = new Account("30", "Adaman", "30", "USD", 5000L, new Date(System.currentTimeMillis()),
                     "A", 4500L, "1000", "1008", "001");
 
             String value = mapper.writeValueAsString(account);
@@ -93,7 +93,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AccrAcctCr accrAcctCr = new AccrAcctCr("14", 3.4);
+            AccrAcctCr accrAcctCr = new AccrAcctCr("30", 34);
 
             String value = mapper.writeValueAsString(accrAcctCr);
 
@@ -109,7 +109,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            AzAccount azAccount = new AzAccount("14", 6);
+            AzAccount azAccount = new AzAccount("30", 30);
 
             String value = mapper.writeValueAsString(azAccount);
 
