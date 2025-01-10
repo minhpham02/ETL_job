@@ -156,9 +156,9 @@ public class KafkaAccountConsumer {
                 updateStatement.setString(2, accountNo);
                 int rowsAffected = updateStatement.executeUpdate();
                 if (rowsAffected > 0) {
-                    System.out.println("Cập nhật rate thành công cho account_no: " + accountNo);
+                    System.out.println("Cap nhat rate thanh cong cho account_no: " + accountNo);
                 } else {
-                    System.out.println("Không tìm thấy bản ghi với account_no: " + accountNo + " để cập nhật rate.");
+                    System.out.println("Khong tim thay ban ghi voi account_no: " + accountNo + " de cap nhat rate.");
                 }
             }
         }
@@ -169,9 +169,9 @@ public class KafkaAccountConsumer {
                 updateEndDtStatement.setString(1, accountNo);
                 int rowsAffected = updateEndDtStatement.executeUpdate();
                 if (rowsAffected > 0) {
-                    System.out.println("Cập nhật end_dt thành công cho account_no: " + accountNo);
+                    System.out.println("Cap nhat rate thanh cong cho account_no: " + accountNo);
                 } else {
-                    System.out.println("Không tìm thấy bản ghi với account_no: " + accountNo + " để cập nhật end_dt.");
+                    System.out.println("Khong tim thay ban ghi voi account_no: " + accountNo + " de cap nhat end_dt.");
                 }
             }
         }
@@ -193,7 +193,7 @@ public class KafkaAccountConsumer {
 
             // Chèn bản ghi mới vào database
             insertDimAccount(newDimAccount);
-            System.out.println("Chèn bản ghi mới thành công cho account_no: " + newDimAccount.getAccountNo());
+            System.out.println("Chen ban ghi moi thanh cong cho account_no: " + newDimAccount.getAccountNo());
         }
 
         private void insertDimAccount(DimAccount dimAccount) throws Exception {
