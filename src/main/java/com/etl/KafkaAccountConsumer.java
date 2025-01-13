@@ -6,9 +6,7 @@ import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
 
 import com.etl.Utils.KafkaSourceUtil;
@@ -21,7 +19,6 @@ import oracle.jdbc.pool.OracleDataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 
 public class KafkaAccountConsumer {
     public static void main(String[] args) throws Exception {
@@ -105,19 +102,20 @@ public class KafkaAccountConsumer {
             String key = "";
             Number rate = null;
 
+            // Lấy giá trị key và rate từ đối tượng value
             if (value instanceof AzAccount) {
                 AzAccount azAccount = (AzAccount) value;
                 key = azAccount.getId();
                 rate = azAccount.getInterestNumber();
-            }
-
-            if (value instanceof AccrAcctCr) {
+            } else if (value instanceof AccrAcctCr) {
                 AccrAcctCr accrAcctCr = (AccrAcctCr) value;
                 key = accrAcctCr.getAccountNumber();
                 rate = accrAcctCr.getCrIntRate();
             }
 
-            PreparedStatement statement = connection.prepareStatement("SELECT ACCOUNT_NO, RATE FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?");
+            // Lấy thông tin bản ghi hiện tại từ cơ sở dữ liệu
+            PreparedStatement statement = connection
+                    .prepareStatement("SELECT ACCOUNT_NO, RATE FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?");
             statement.setString(1, key);
             ResultSet resultSet = statement.executeQuery();
             DimAccount dimAccount = null;
@@ -131,60 +129,51 @@ public class KafkaAccountConsumer {
 
             if (value instanceof AccrAcctCr) {
                 if (dimAccount.getRate() == null) {
-                    PreparedStatement updateStatement = connection
-                        .prepareStatement("UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET RATE = ?, UPDATE_TMS = CURRENT_TIMESTAMP WHERE ACCOUNT_NO = ?");
-                    updateStatement.setObject(1, rate);
-                    updateStatement.setString(2, key);
-                    updateStatement.executeUpdate();
-                }
-            } else if (value instanceof AzAccount) {
-                if (dimAccount.getRate() == null) {
-                    PreparedStatement updateStatement = connection.prepareStatement("UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET RATE = ?, UPDATE_TMS = CURRENT_TIMESTAMP WHERE ACCOUNT_NO = ?");
+                    PreparedStatement updateStatement = connection.prepareStatement(
+                            "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET RATE = ?, UPDATE_TMS = CURRENT_TIMESTAMP WHERE ACCOUNT_NO = ?");
                     updateStatement.setObject(1, rate);
                     updateStatement.setString(2, key);
                     updateStatement.executeUpdate();
                     updateStatement.close();
-                }else{
-                    PreparedStatement updateEndDtStatement = connection.prepareStatement("UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = CURRENT_DATE WHERE ACCOUNT_NO = ?"); 
-                    updateEndDtStatement.setString(1, key); 
+                }
+            } else if (value instanceof AzAccount) {
+                if (dimAccount.getRate() == null) {
+                    PreparedStatement updateStatement = connection.prepareStatement(
+                            "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET RATE = ?, UPDATE_TMS = CURRENT_TIMESTAMP WHERE ACCOUNT_NO = ?");
+                    updateStatement.setObject(1, rate);
+                    updateStatement.setString(2, key);
+                    updateStatement.executeUpdate();
+                    updateStatement.close();
+                } else {
+                    // Bước 1: Cập nhật END_DT của bản ghi cũ
+                    PreparedStatement updateEndDtStatement = connection.prepareStatement(
+                            "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = CURRENT_DATE WHERE ACCOUNT_NO = ?");
+                    updateEndDtStatement.setString(1, key);
                     updateEndDtStatement.executeUpdate();
                     updateEndDtStatement.close();
 
-                    PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?"); 
+                    PreparedStatement selectStatement = connection.prepareStatement( "SELECT ACCOUNT_NO, RATE FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?"); 
                     selectStatement.setString(1, key); 
                     ResultSet resultSet1 = selectStatement.executeQuery(); 
-                    ResultSetMetaData metaData = resultSet.getMetaData(); 
-                    int columnCount = metaData.getColumnCount(); 
                     if (resultSet1.next()) { 
-                        // Tạo câu lệnh INSERT động dựa trên các cột trong bản ghi hiện tại 
-                        StringBuilder columns = new StringBuilder(); 
-                        StringBuilder placeholders = new StringBuilder(); 
-                        for (int i = 1; i <= columnCount; i++) { 
-                            String columnName = metaData.getColumnName(i); 
-                            if (!columnName.equals("RATE") && !columnName.equals("UPDATE_TMS") && !columnName.equals("END_DT")) { 
-                                // Bỏ qua các cột RATE, UPDATE_TMS và END_DT để cập nhật riêng 
-                                if (columns.length() > 0) { 
-                                    columns.append(", "); 
-                                    placeholders.append(", ");
-                            } 
-                            columns.append(columnName); 
-                            placeholders.append("?"); 
-                        } 
+                        String insertSql = "INSERT INTO FSSTRAINING.MP_DIM_ACCOUNT (ACCOUNT_TYPE, CCY, CR_GL, ACCOUNT_NO, MATURITY_DATE, RATE, RECORD_STAT, ACCOUNT_CLASS, EFF_DT, END_DT, UPDATE_TMS, ACT_F)" + 
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, NULL, CURRENT_TIMESTAMP, ?)";
+                        PreparedStatement insertStatement = connection.prepareStatement(insertSql); 
+                        insertStatement.setString(1, resultSet1.getString("ACCOUNT_TYPE"));
+                        insertStatement.setString(2, resultSet1.getString("CCY"));
+                        insertStatement.setString(3, resultSet1.getString("CR_GL"));
+                        insertStatement.setString(4, resultSet1.getString("ACCOUNT_NO"));
+                        insertStatement.setDate(5, resultSet1.getDate("MATURITY_DATE")); 
+                        insertStatement.setObject(6, rate);
+                        insertStatement.setString(7, resultSet1.getString("RECORD_STAT"));
+                        insertStatement.setString(8, resultSet1.getString("ACCOUNT_CLASS"));
+                        insertStatement.setString(12, resultSet1.getString("ACCOUNT_CLASS"));
+                         
+                        insertStatement.executeUpdate(); 
+                        insertStatement.close(); 
                     } 
-                    columns.append(", RATE, UPDATE_TMS"); 
-                    placeholders.append(", ?, CURRENT_TIMESTAMP, CURRENT_DATE");
-                     
-                    String insertSql = "INSERT INTO FSSTRAINING.MP_DIM_ACCOUNT (" + columns.toString() + ") VALUES (" + placeholders.toString() + ")";
-                    PreparedStatement insertStatement = connection.prepareStatement(insertSql); 
-                    int index = 1; for (int i = 1; i <= columnCount; i++) { 
-                        String columnName = metaData.getColumnName(i); 
-                        if (!columnName.equals("RATE") && !columnName.equals("UPDATE_TMS") && !columnName.equals("END_DT")) { 
-                            // Bỏ qua các cột RATE, UPDATE_TMS và END_DT để cập nhật riêng 
-                            insertStatement.setObject(index++, resultSet.getObject(i)); 
-                        } 
-                    } 
-                    insertStatement.setObject(index++, rate); 
-                    insertStatement.executeUpdate(); }
+                    selectStatement.close(); 
+                    resultSet1.close();
                 }
             }
         }
