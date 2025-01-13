@@ -39,9 +39,9 @@ public class KafkaDataProducer {
 
         // sendAccountData(producer);
         // sendAccrAcctCrData(producer);
-        sendAzAccount(producer);
+        // sendAzAccount(producer);
         // sendProductData(producerProduct);
-        // sendTellerData(producer);
+        sendTellerData(producer);
 
         producer.close();
     }
@@ -146,7 +146,7 @@ public class KafkaDataProducer {
             20240415,  // VALUE_DATE_2
             "USD",                                 // CURRENCY_1
             "T1234",                               // TRANSACTION_CODE
-            "2",                                   // ID
+            "7",                                   // ID
             3400,                                // AMOUNT_FCY_1
             300000,                             // AMOUNT_FCY_2
             1.25,                                  // RATE_2
@@ -159,9 +159,9 @@ public class KafkaDataProducer {
 
         // Teller teller = new Teller(
         //     null,  // VALUE_DATE_2
-        //     "VND",                                 // CURRENCY_1
+        //     "USD",                                 // CURRENCY_1
         //     null,                               // TRANSACTION_CODE
-        //     "1",                                   // ID
+        //     "3",                                   // ID
         //     null,                                // AMOUNT_FCY_1
         //     null,                             // AMOUNT_FCY_2
         //     null,                                  // RATE_2
