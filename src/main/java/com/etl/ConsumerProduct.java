@@ -68,61 +68,85 @@ public class ConsumerProduct {
 
                 @Override
                 public void processElement(Product product, Context context, Collector<DimProduct> out) throws Exception {
-                    // Convert Product to DimProduct
-                    DimProduct newDimProduct = mapToDimProduct(product);
+                    DimProduct newDimProduct = mapToDimProduct(product); // Chuyển Product sang DimProduct
 
-                    boolean isUpdated = false; // Flag to track if update occurred
-
-                    // Check for duplicates and process update/insert
                     try (Connection connection = DriverManager.getConnection(
                             "jdbc:oracle:thin:@192.168.1.214:1521:dwh", "fsstraining", "fsstraining")) {
 
-                        // Check if PRODUCT_NO exists in DIM_PRODUCT
-                        String queryDimProduct = "SELECT PRODUCT_CATEGORY, PRODUCT_CODE, PRODUCT_TYPE, RECORD_STAT FROM FSSTRAINING.DIM_PRODUCT WHERE PRODUCT_NO = ? AND END_DT IS NULL";
+                        // Query để kiểm tra bản ghi trong DIM_PRODUCT
+                        String queryDimProduct = "SELECT PRODUCT_CATEGORY, PRODUCT_CODE, PRODUCT_TYPE, RECORD_STAT, EFF_DT " +
+                                                 "FROM FSSTRAINING.DIM_PRODUCT " +
+                                                 "WHERE PRODUCT_NO = ? AND END_DT IS NULL";
+
                         try (PreparedStatement dimProductPs = connection.prepareStatement(queryDimProduct)) {
                             dimProductPs.setLong(1, product.getProductNo());
                             ResultSet dimProductRs = dimProductPs.executeQuery();
 
                             if (dimProductRs.next()) {
-                                // If there is a matching record with PRODUCT_NO
+                                // Bản ghi tồn tại, lấy dữ liệu từ DB
                                 String dbProductCategory = dimProductRs.getString("PRODUCT_CATEGORY");
                                 String dbProductCode = dimProductRs.getString("PRODUCT_CODE");
                                 String dbProductType = dimProductRs.getString("PRODUCT_TYPE");
                                 String dbRecordStat = dimProductRs.getString("RECORD_STAT");
+                                java.sql.Date dbEffDt = dimProductRs.getDate("EFF_DT");
 
-                                // Check if all fields match
-                                if (dbProductCategory.equals(newDimProduct.getProductCategory()) &&
-                                    dbProductCode.equals(newDimProduct.getProductCode()) &&
-                                    dbProductType.equals(newDimProduct.getProductType()) &&
-                                    dbRecordStat.equals(newDimProduct.getRecordStat())) {
-                                    // If identical, do nothing
-                                    System.out.println("Record already exists, no update or insert needed.");
-                                } else {
-                                    // If there is a difference in any field
-                                    // Update the old record
-                                    String updateEndDateQuery = "UPDATE FSSTRAINING.DIM_PRODUCT SET END_DT = SYSDATE, UPDATE_TMS = SYSTIMESTAMP WHERE PRODUCT_NO = ?";
-                                    try (PreparedStatement updatePs = connection.prepareStatement(updateEndDateQuery)) {
+                                // So sánh eff_dt (ngày tháng năm)
+                                java.sql.Date currentDate = new java.sql.Date(System.currentTimeMillis());
+                                if (!dbEffDt.toLocalDate().isEqual(currentDate.toLocalDate())) {
+                                    // Nếu eff_dt không trùng ngày hiện tại:
+                                    // 1. Cập nhật bản ghi cũ
+                                    String updateOldRecord = "UPDATE FSSTRAINING.DIM_PRODUCT " +
+                                                             "SET END_DT = SYSDATE, UPDATE_TMS = SYSTIMESTAMP " +
+                                                             "WHERE PRODUCT_NO = ? AND END_DT IS NULL";
+                                    try (PreparedStatement updatePs = connection.prepareStatement(updateOldRecord)) {
                                         updatePs.setLong(1, product.getProductNo());
                                         updatePs.executeUpdate();
-                                        System.out.println("Successfully updated old record.");
-                                        isUpdated = true; // Mark as updated
+                                        System.out.println("Da cap nhat END_DT cua ban ghi cu thanh cong");
                                     }
 
-                                    // Insert a new record if updated
-                                    if (isUpdated) {
-                                        out.collect(newDimProduct); // Collect the new DimProduct to output
+                                    // 2. Thêm bản ghi mới
+                                    out.collect(newDimProduct);
+                                    System.out.println("Da chen moi thanh cong");
+                                } else {
+                                    // Nếu eff_dt trùng ngày hiện tại:
+                                    // So sánh các trường khác
+                                    if (!dbProductCategory.equals(newDimProduct.getProductCategory()) ||
+                                        !dbProductCode.equals(newDimProduct.getProductCode()) ||
+                                        !dbProductType.equals(newDimProduct.getProductType()) ||
+                                        !dbRecordStat.equals(newDimProduct.getRecordStat())) {
+
+                                        // Nếu bất kỳ trường nào khác: cập nhật bản ghi
+                                        String updateFields = "UPDATE FSSTRAINING.DIM_PRODUCT " +
+                                                              "SET PRODUCT_CATEGORY = ?, PRODUCT_CODE = ?, PRODUCT_TYPE = ?, " +
+                                                              "RECORD_STAT = ?, UPDATE_TMS = SYSTIMESTAMP " +
+                                                              "WHERE PRODUCT_NO = ? AND END_DT IS NULL";
+                                        try (PreparedStatement updatePs = connection.prepareStatement(updateFields)) {
+                                            updatePs.setString(1, newDimProduct.getProductCategory());
+                                            updatePs.setString(2, newDimProduct.getProductCode());
+                                            updatePs.setString(3, newDimProduct.getProductType());
+                                            updatePs.setString(4, newDimProduct.getRecordStat());
+                                            updatePs.setLong(5, product.getProductNo());
+                                            updatePs.executeUpdate();
+                                            System.out.println("Da cap nhat ban ghi thanh cong");
+                                        }
+                                    } else {
+                                        // Nếu không khác gì, pass
+                                        System.out.println("Ban ghi khong co thay doi, khong can hanh dong");
                                     }
                                 }
                             } else {
-                                // If no matching record, insert a new one
-                                out.collect(newDimProduct); // Collect the new DimProduct to output
+                                // Nếu không có bản ghi nào: thêm mới
+                                out.collect(newDimProduct);
+                                System.out.println("Da chen moi thanh cong");
                             }
                         }
                     } catch (Exception e) {
+                        System.err.println("Loi xay ra khi xu ly: " + e.getMessage());
                         e.printStackTrace();
                     }
 
-                    lastProductState.update(product); // Update state with the latest product
+                    // Cập nhật state với bản ghi mới nhất
+                    lastProductState.update(product);
                 }
             });
 
