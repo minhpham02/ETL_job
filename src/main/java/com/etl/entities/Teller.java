@@ -2,6 +2,8 @@ package com.etl.entities;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,16 +14,39 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Teller {
-    private Number valueDate2;         // VALUE_DATE_2
-    private String currency1;       // CURRENCY_1
-    private String transactionCode; // TRANSACTION_CODE
-    private String id;              // ID
-    private Number amountFcy1;  // AMOUNT_FCY_1
-    private Number amountFcy2;  // AMOUNT_FCY_2
-    private Number rate2;           // RATE_2
-    private String customer2;       // CUSTOMER_2
-    private String authoriser;      // AUTHORISER
-    private String opType;          // OP_TYPE
-    private String account1;        // ACCOUNT_1
-    private String account2;        // ACCOUNT_2
+    @JsonProperty("VALUE_DATE_2")
+    private Number valueDate2;
+
+    @JsonProperty("CURRENCY_1")
+    private String currency1;
+
+    @JsonProperty("TRANSACTION_CODE")
+    private String transactionCode;
+
+    @JsonProperty("ID")
+    private String id;
+
+    @JsonProperty("AMOUNT_FCY_1")
+    private Number amountFcy1;
+
+    @JsonProperty("AMOUNT_FCY_2")
+    private Number amountFcy2;
+
+    @JsonProperty("RATE_2")
+    private Number rate2;
+
+    @JsonProperty("CUSTOMER_2")
+    private String customer2;
+
+    @JsonProperty("AUTHORISER")
+    private String authoriser;
+
+    @JsonProperty("OP_TYPE")
+    private String opType;
+
+    @JsonProperty("ACCOUNT_1")
+    private String account1;
+
+    @JsonProperty("ACCOUNT_2")
+    private String account2;       // ACCOUNT_2
 }

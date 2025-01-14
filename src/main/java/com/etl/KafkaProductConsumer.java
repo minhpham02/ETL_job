@@ -8,14 +8,13 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
-
 import com.etl.Utils.KafkaSourceUtil;
 import com.etl.entities.DimProduct;
 import com.etl.entities.Product;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import oracle.jdbc.pool.OracleDataSource;
 

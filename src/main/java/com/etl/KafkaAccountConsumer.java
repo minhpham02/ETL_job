@@ -145,7 +145,7 @@ public class KafkaAccountConsumer {
                     updateStatement.executeUpdate();
                     updateStatement.close();
                 } else {
-                    // Bước 1: Cập nhật END_DT của bản ghi cũ
+                    
                     PreparedStatement updateEndDtStatement = connection.prepareStatement(
                             "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = CURRENT_DATE WHERE ACCOUNT_NO = ?");
                     updateEndDtStatement.setString(1, key);

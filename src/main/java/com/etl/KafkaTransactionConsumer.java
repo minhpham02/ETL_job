@@ -14,7 +14,6 @@ import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsIni
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
-import com.etl.Utils.KafkaSourceUtil;
 import com.etl.entities.FactTransaction;
 import com.etl.entities.Teller;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -123,33 +122,33 @@ public class KafkaTransactionConsumer {
                 String account1 = teller.getAccount1() != null ? teller.getAccount1() : "";
                 String account2 = teller.getAccount2() != null ? teller.getAccount2() : "";
 
-                String mergeSql = "MERGE INTO FSSTRAINING.MP_FACT_TRANSACTION target "
-                        + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
-                        + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
-                        + "WHEN MATCHED THEN "
-                        + "UPDATE SET TXN_CCY = source.TXN_CCY, PRODUCT_CODE = source.PRODUCT_CODE, LCY_AMOUNT = source.LCY_AMOUNT, TXN_AMOUNT = source.TXN_AMOUNT, CST_DIM_ID = source.CST_DIM_ID, RECORD_STAT = source.RECORD_STAT, AUTH_STAT = source.AUTH_STAT, TXN_ACC = source.TXN_ACC, OFS_ACC = source.OFS_ACC, TRN_DT = source.TRN_DT, ETL_DATE = CURRENT_DATE "
-                        + "WHEN NOT MATCHED THEN "
-                        + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
-                        + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
-
                 // String mergeSql = "MERGE INTO FSSTRAINING.MP_FACT_TRANSACTION target "
-                // + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
-                // + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
-                // + "WHEN MATCHED THEN "
-                // + "UPDATE SET TXN_CCY = CASE WHEN target.TXN_CCY != source.TXN_CCY THEN source.TXN_CCY ELSE target.TXN_CCY END, "
-                // + "PRODUCT_CODE = CASE WHEN target.PRODUCT_CODE != source.PRODUCT_CODE THEN source.PRODUCT_CODE ELSE target.PRODUCT_CODE END, "
-                // + "LCY_AMOUNT = CASE WHEN target.LCY_AMOUNT != source.LCY_AMOUNT THEN source.LCY_AMOUNT ELSE target.LCY_AMOUNT END, "
-                // + "TXN_AMOUNT = CASE WHEN target.TXN_AMOUNT != source.TXN_AMOUNT THEN source.TXN_AMOUNT ELSE target.TXN_AMOUNT END, "
-                // + "CST_DIM_ID = CASE WHEN target.CST_DIM_ID != source.CST_DIM_ID THEN source.CST_DIM_ID ELSE target.CST_DIM_ID END, "
-                // + "RECORD_STAT = CASE WHEN target.RECORD_STAT != source.RECORD_STAT THEN source.RECORD_STAT ELSE target.RECORD_STAT END, "
-                // + "AUTH_STAT = CASE WHEN target.AUTH_STAT != source.AUTH_STAT THEN source.AUTH_STAT ELSE target.AUTH_STAT END, "
-                // + "TXN_ACC = CASE WHEN target.TXN_ACC != source.TXN_ACC THEN source.TXN_ACC ELSE target.TXN_ACC END, "
-                // + "OFS_ACC = CASE WHEN target.OFS_ACC != source.OFS_ACC THEN source.OFS_ACC ELSE target.OFS_ACC END, "
-                // + "TRN_DT = CASE WHEN target.TRN_DT != source.TRN_DT THEN source.TRN_DT ELSE target.TRN_DT END, "
-                // + "ETL_DATE = CURRENT_DATE "
-                // + "WHEN NOT MATCHED THEN "
-                // + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
-                // + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
+                //         + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
+                //         + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
+                //         + "WHEN MATCHED THEN "
+                //         + "UPDATE SET TXN_CCY = source.TXN_CCY, PRODUCT_CODE = source.PRODUCT_CODE, LCY_AMOUNT = source.LCY_AMOUNT, TXN_AMOUNT = source.TXN_AMOUNT, CST_DIM_ID = source.CST_DIM_ID, RECORD_STAT = source.RECORD_STAT, AUTH_STAT = source.AUTH_STAT, TXN_ACC = source.TXN_ACC, OFS_ACC = source.OFS_ACC, TRN_DT = source.TRN_DT, ETL_DATE = CURRENT_DATE "
+                //         + "WHEN NOT MATCHED THEN "
+                //         + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
+                //         + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
+
+                String mergeSql = "MERGE INTO FSSTRAINING.MP_FACT_TRANSACTION target "
+                + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
+                + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
+                + "WHEN MATCHED THEN "
+                + "UPDATE SET TXN_CCY = CASE WHEN target.TXN_CCY != source.TXN_CCY THEN source.TXN_CCY ELSE target.TXN_CCY END, "
+                + "PRODUCT_CODE = CASE WHEN target.PRODUCT_CODE != source.PRODUCT_CODE THEN source.PRODUCT_CODE ELSE target.PRODUCT_CODE END, "
+                + "LCY_AMOUNT = CASE WHEN (target.LCY_AMOUNT != source.LCY_AMOUNT AND source.LCY_AMOUNT !=0) THEN source.LCY_AMOUNT ELSE target.LCY_AMOUNT END, "
+                + "TXN_AMOUNT = CASE WHEN (target.TXN_AMOUNT != source.TXN_AMOUNT AND source.TXN_AMOUNT != 0) THEN source.TXN_AMOUNT ELSE target.TXN_AMOUNT END, "
+                + "CST_DIM_ID = CASE WHEN target.CST_DIM_ID != source.CST_DIM_ID THEN source.CST_DIM_ID ELSE target.CST_DIM_ID END, "
+                + "RECORD_STAT = CASE WHEN target.RECORD_STAT != source.RECORD_STAT THEN source.RECORD_STAT ELSE target.RECORD_STAT END, "
+                + "AUTH_STAT = CASE WHEN target.AUTH_STAT != source.AUTH_STAT THEN source.AUTH_STAT ELSE target.AUTH_STAT END, "
+                + "TXN_ACC = CASE WHEN target.TXN_ACC != source.TXN_ACC THEN source.TXN_ACC ELSE target.TXN_ACC END, "
+                + "OFS_ACC = CASE WHEN target.OFS_ACC != source.OFS_ACC THEN source.OFS_ACC ELSE target.OFS_ACC END, "
+                + "TRN_DT = CASE WHEN target.TRN_DT != source.TRN_DT THEN source.TRN_DT ELSE target.TRN_DT END, "
+                + "ETL_DATE = CURRENT_DATE "
+                + "WHEN NOT MATCHED THEN "
+                + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
+                + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
         
                 PreparedStatement statement = connection.prepareStatement(mergeSql);
                 statement.setString(1, currency1);
