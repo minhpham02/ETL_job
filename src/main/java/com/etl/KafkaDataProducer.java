@@ -76,7 +76,7 @@ public class KafkaDataProducer {
         ObjectMapper mapper = new ObjectMapper();
 
         try {
-            Account account = new Account("49", "Hacker13", "49", "USD", 5000L, new Date(System.currentTimeMillis()),
+            Account account = new Account("49", "Hacker12", "49", "USD", 5000L, new Date(System.currentTimeMillis()),
                     "A", 4500L, "1000", "1008", "001");
 
             String value = mapper.writeValueAsString(account);
@@ -127,10 +127,10 @@ public class KafkaDataProducer {
         try {
             Product product = new Product(
                 5L,                                  // productNo: Long
-                "6",                                // locTerm: String
+                "66",                                // locTerm: String
                 "Saving Account",                    // category: String
                 "SubProduct1",                       // subProduct: String
-                "D",                                 // opType: String
+                null,                                 // opType: String
                 new Date(System.currentTimeMillis()), // effectiveDate: Date
                 null,                                // endDate: Date (null)
                 new Timestamp(System.currentTimeMillis()) // updateTimestamp: Timestamp
@@ -152,7 +152,7 @@ public class KafkaDataProducer {
         try {
             Teller teller = new Teller(
                 20240415,  // VALUE_DATE_2
-                "USD",                                 // CURRENCY_1
+                "VND",                                 // CURRENCY_1
                 "T1234",                               // TRANSACTION_CODE
                 "1",                                   // ID
                 1000.5,                                // AMOUNT_FCY_1

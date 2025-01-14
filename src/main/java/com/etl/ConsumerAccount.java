@@ -6,6 +6,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Properties;
+import java.util.Objects;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
@@ -73,75 +74,111 @@ public class ConsumerAccount {
                         try (Connection connection = DriverManager.getConnection(
                                 "jdbc:oracle:thin:@192.168.1.214:1521:dwh", "fsstraining", "fsstraining")) {
 
-                            // Check if ACCOUNT_NO already exists in MP_DIM_ACCOUNT
-                            String queryDimAccount = "SELECT ACCOUNT_NO FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?";
+                            // Truy vấn DIM_ACCOUNT
+                            String queryDimAccount = "SELECT ACCOUNT_TYPE, CCY, CR_GL, ACCOUNT_NO, MATURITY_DATE, RATE, RECORD_STAT, ACCOUNT_CLASS, EFF_DT, END_DT, UPDATE_TMS " +
+                                                    "FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ? AND END_DT IS NULL";
                             try (PreparedStatement dimAccountPs = connection.prepareStatement(queryDimAccount)) {
                                 dimAccountPs.setString(1, account.getId());
                                 ResultSet dimAccountRs = dimAccountPs.executeQuery();
 
-                                // If account exists in MP_DIM_ACCOUNT, update END_DT and UPDATE_TMS
+                                // Ánh xạ dữ liệu từ Kafka (newDimAccount)
+                                DimAccount newDimAccount = mapToDimAccount(account);
+                                System.out.println("New DimAccount (from Kafka): " + newDimAccount);
+
                                 if (dimAccountRs.next()) {
-                                    String updateEndDateQuery = "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = SYSDATE, UPDATE_TMS = SYSTIMESTAMP WHERE ACCOUNT_NO = ?";
-                                    try (PreparedStatement updatePs = connection.prepareStatement(updateEndDateQuery)) {
-                                        updatePs.setString(1, account.getId());
-                                        updatePs.executeUpdate();
-                                    }
-                                }
-                            }
+                                    // Ánh xạ dữ liệu hiện tại từ DIM_ACCOUNT
+                                    DimAccount currentDimAccount = new DimAccount();
+                                    currentDimAccount.setAccountType(dimAccountRs.getString("ACCOUNT_TYPE"));
+                                    currentDimAccount.setCcy(dimAccountRs.getString("CCY"));
+                                    currentDimAccount.setCrGl(dimAccountRs.getString("CR_GL"));
+                                    currentDimAccount.setAccountNo(dimAccountRs.getString("ACCOUNT_NO"));
+                                    currentDimAccount.setMaturityDate(dimAccountRs.getDate("MATURITY_DATE"));
+                                    currentDimAccount.setRate(dimAccountRs.getBigDecimal("RATE"));
+                                    currentDimAccount.setRecordStat(dimAccountRs.getString("RECORD_STAT"));
+                                    currentDimAccount.setAccountClass(dimAccountRs.getString("ACCOUNT_CLASS"));
+                                    currentDimAccount.setEffDt(dimAccountRs.getDate("EFF_DT"));
+                                    currentDimAccount.setEndDt(dimAccountRs.getDate("END_DT"));
+                                    currentDimAccount.setUpdateTms(dimAccountRs.getTimestamp("UPDATE_TMS"));
+                                    System.out.println("Current DimAccount (from DB): " + currentDimAccount);
 
-                            // Continue processing as before, query TRN_AZ_ACCOUNT or TRN_ACCR_ACCT_CR
-                            String queryAzAccount = "SELECT INTEREST_RATE FROM TRN_AZ_ACCOUNT WHERE ID = ?";
-                            try (PreparedStatement azAccountPs = connection.prepareStatement(queryAzAccount)) {
-                                azAccountPs.setString(1, account.getId());
-                                ResultSet azAccountRs = azAccountPs.executeQuery();
+                                    // Kiểm tra ngày EFF_DT
+                                    java.sql.Date today = new java.sql.Date(System.currentTimeMillis());
+                                    boolean isEffDtToday = (currentDimAccount.getEffDt() != null &&
+                                                            currentDimAccount.getEffDt().toString().equals(today.toString()));
 
-                                if (azAccountRs.next()) {
-                                    DimAccount dimAccount = mapToDimAccount(account);
-                                    dimAccount.setRate(azAccountRs.getBigDecimal("INTEREST_RATE"));
-                                    out.collect(dimAccount);
-                                    lastAccountState.update(account);
-                                    return;
-                                }
-                            }
+                                    if (isEffDtToday) {
+                                        // Kiểm tra sự khác biệt nếu EFF_DT là hôm nay
+                                        if (hasDifferences(currentDimAccount, newDimAccount)) {
+                                            // Nếu có sự khác biệt, thực hiện cập nhật bản ghi
+                                            String updateCurrentQuery = "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET " +
+                                                                        "ACCOUNT_TYPE = ?, CCY = ?, CR_GL = ?, MATURITY_DATE = ?, RATE = ?, RECORD_STAT = ?, " +
+                                                                        "ACCOUNT_CLASS = ?, UPDATE_TMS = SYSTIMESTAMP " +
+                                                                        "WHERE ACCOUNT_NO = ? AND END_DT IS NULL";
+                                            try (PreparedStatement updatePs = connection.prepareStatement(updateCurrentQuery)) {
+                                                updatePs.setString(1, newDimAccount.getAccountType());
+                                                updatePs.setString(2, newDimAccount.getCcy());
+                                                updatePs.setString(3, newDimAccount.getCrGl());
+                                                updatePs.setDate(4, newDimAccount.getMaturityDate() != null
+                                                        ? new java.sql.Date(newDimAccount.getMaturityDate().getTime()) : null);
+                                                updatePs.setBigDecimal(5, newDimAccount.getRate() != null
+                                                        ? new BigDecimal(newDimAccount.getRate().toString()) : null);
+                                                updatePs.setString(6, newDimAccount.getRecordStat());
+                                                updatePs.setString(7, newDimAccount.getAccountClass());
+                                                updatePs.setString(8, newDimAccount.getAccountNo());
+                                                updatePs.executeUpdate();
+                                            }
+                                        }
+                                    } else {
+                                        // Nếu EFF_DT không phải hôm nay, kết thúc bản ghi cũ
+                                        String updateEndDateQuery = "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = SYSDATE, UPDATE_TMS = SYSTIMESTAMP WHERE ACCOUNT_NO = ? AND END_DT IS NULL";
+                                        try (PreparedStatement updatePs = connection.prepareStatement(updateEndDateQuery)) {
+                                            updatePs.setString(1, newDimAccount.getAccountNo());
+                                            updatePs.executeUpdate();
+                                        }
 
-                            // Query TRN_ACCR_ACCT_CR
-                            String queryAccrAcctCr = "SELECT CR_INT_RATE FROM FSSTRAINING.TRN_ACCR_ACCT_CR WHERE ACCOUNT_NUMBER = ?";
-                            try (PreparedStatement accrAcctCrPs = connection.prepareStatement(queryAccrAcctCr)) {
-                                accrAcctCrPs.setString(1, account.getId());
-                                ResultSet accrAcctCrRs = accrAcctCrPs.executeQuery();
-
-                                if (accrAcctCrRs.next()) {
-                                    DimAccount dimAccount = mapToDimAccount(account);
-
-                                    String crIntRate = accrAcctCrRs.getString("CR_INT_RATE");
-                                    BigDecimal rate = null;
-
-                                    // Process CR_INT_RATE
-                                    if (crIntRate != null) {
-                                        if (crIntRate.contains("#")) {
-                                            String trimmedRate = crIntRate.substring(crIntRate.lastIndexOf("#") + 1).trim();
-                                            rate = new BigDecimal(trimmedRate);
-                                        } else {
-                                            rate = new BigDecimal(crIntRate);
+                                        // Chèn bản ghi mới
+                                        String insertQuery = generateInsertQueryForDimAccount(newDimAccount);
+                                        try (PreparedStatement insertPs = connection.prepareStatement(insertQuery)) {
+                                            insertPs.executeUpdate();
                                         }
                                     }
-
-                                    dimAccount.setRate(rate);
-                                    out.collect(dimAccount);
-                                    lastAccountState.update(account);
-                                    return;
+                                } else {
+                                    // Nếu không tìm thấy bản ghi hiện tại trong DIM_ACCOUNT, thực hiện chèn mới
+                                    String insertQuery = generateInsertQueryForDimAccount(newDimAccount);
+                                    try (PreparedStatement insertPs = connection.prepareStatement(insertQuery)) {
+                                        insertPs.executeUpdate();
+                                    }
                                 }
                             }
-
-                            // If no rate found in either table
-                            DimAccount dimAccount = mapToDimAccount(account);
-                            dimAccount.setRate(null);
-                            out.collect(dimAccount);
-                            lastAccountState.update(account);
                         }
+                        lastAccountState.update(account);
                     }
                 }
 
+
+                private boolean hasDifferences(DimAccount current, DimAccount updated) {
+                    if (current == null || updated == null) {
+                        return true; // Nếu một trong hai là null, coi như khác nhau
+                    }
+
+                    // In ra kết quả so sánh chi tiết trước khi thực hiện so sánh chi tiết
+                    System.out.println("Comparing current and updated DimAccount:");
+                    System.out.println("Current DimAccount: " + current);
+                    System.out.println("Updated DimAccount: " + updated);
+
+                    boolean result = !Objects.equals(current.getAccountType(), updated.getAccountType()) ||
+                                    !Objects.equals(current.getCcy(), updated.getCcy()) ||
+                                    !Objects.equals(current.getCrGl(), updated.getCrGl()) ||
+                                    !Objects.equals(current.getMaturityDate(), updated.getMaturityDate()) ||
+                                    !Objects.equals(current.getRate(), updated.getRate()) ||
+                                    !Objects.equals(current.getRecordStat(), updated.getRecordStat()) ||
+                                    !Objects.equals(current.getAccountClass(), updated.getAccountClass());
+
+                    // In ra kết quả của so sánh
+                    System.out.println("Result of comparison: " + result);
+                    return result;
+                }
+                
             });
 
         // Sink DimAccount Stream to SQL
