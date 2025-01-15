@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "KafkaProducerData",
+            "request": "launch",
+            "mainClass": "com.etl.KafkaProducerData",
+            "projectName": "dim_account"
+        },
+        {
+            "type": "java",
             "name": "UpdateAZaccountAccrConsumer",
             "request": "launch",
             "mainClass": "com.etl.UpdateAZaccountAccrConsumer",
