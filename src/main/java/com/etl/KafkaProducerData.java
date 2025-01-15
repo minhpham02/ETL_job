@@ -31,29 +31,33 @@ public class KafkaProducerData {
 
         Producer<String, String> producer = new KafkaProducer<>(props);
 
-        // Dữ liệu key-value
+        // sendTellerData(producer);
+        // sendAccrAcctCrData(producer);
+        sendAzAccount(producer);
+
+        }
+
+    private static void sendTellerData(Producer<String, String> producer){
+        String topic = "TRN_Teller_MPC4";
         Map<String, Object> data = new HashMap<>();
-        // data.put("VALUE_DATE_2", 20250101); // valueDate2
-        // data.put("CURRENCY_1", "USD");       // currency1
-        // data.put("TRANSACTION_CODE", "TRX"); // transactionCode
-        // data.put("ID", "7");            // id
-        // data.put("AMOUNT_FCY_1", 1000.50);   // amountFcy1
-        // data.put("AMOUNT_FCY_2", 2000.75);   // amountFcy2
-        // data.put("RATE_2", 1.2345);          // rate2
-        // data.put("CUSTOMER_2", "Cust002");   // customer2
-        // data.put("AUTHORISER", "Auth");    // authoriser
-        // data.put("OP_TYPE", "D");        // opType
-        // data.put("ACCOUNT_1", "125");  // account1
-        // data.put("ACCOUNT_2", "455");  // account2
+        data.put("VALUE_DATE_2", 20250101); // valueDate2
+        data.put("CURRENCY_1", "USD");       // currency1
+        data.put("TRANSACTION_CODE", "TRX"); // transactionCode
+        data.put("ID", "7");            // id
+        data.put("AMOUNT_FCY_1", 1000.50);   // amountFcy1
+        data.put("AMOUNT_FCY_2", 2000.75);   // amountFcy2
+        data.put("RATE_2", 1.2345);          // rate2
+        data.put("CUSTOMER_2", "Cust002");   // customer2
+        data.put("AUTHORISER", "Auth");    // authoriser
+        data.put("OP_TYPE", "D");        // opType
+        data.put("ACCOUNT_1", "125");  // account1
+        data.put("ACCOUNT_2", "455");  // account2
 
         try {
             // Chuyển Map thành chuỗi JSON
             ObjectMapper objectMapper = new ObjectMapper();
             String jsonValue = objectMapper.writeValueAsString(data);
-
-            // Gửi toàn bộ JSON vào Kafka
-            String topic = "TRN_Teller_MPC4";
-            ProducerRecord<String, String> record = new ProducerRecord<>(topic, jsonValue);
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, "Key_Teller",jsonValue);
 
             producer.send(record, (metadata, exception) -> {
                 if (exception == null) {
@@ -71,6 +75,67 @@ public class KafkaProducerData {
             producer.close();
         }
     }
+
+    private static void sendAccrAcctCrData(Producer<String, String> producer) {
+        String topic = "TRN_AccrAcctCr_MPC4";
+    
+        Map<String, Object> data = new HashMap<>();
+        data.put("accountNumber", "5");
+        data.put("crIntRate", 3.4);
+    
+        try {
+            // Chuyển Map thành chuỗi JSON
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonValue = objectMapper.writeValueAsString(data);
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, "Key_AccrAcctCr", jsonValue);
+
+            producer.send(record, (metadata, exception) -> {
+                if (exception == null) {
+                    System.out.printf("Sent AccrAcctCr record: Key=%s, Value=%s, Partition=%d, Offset=%d%n",
+                            "Key_AccrAcctCr", jsonValue, metadata.partition(), metadata.offset());
+                } else {
+                    exception.printStackTrace();
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }finally {
+            // Đóng Producer
+            producer.close();
+        }
+    }
+    
+    private static void sendAzAccount(Producer<String, String> producer) {
+        String topic = "TRN_AzAccount_MPC4";
+    
+        // Dữ liệu key-value
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", "5");
+        data.put("interestNumber", 20);
+    
+        try {
+            // Chuyển Map thành chuỗi JSON
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonValue = objectMapper.writeValueAsString(data);
+    
+            // Tạo và gửi bản ghi đến Kafka
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, "Key_AzAccount", jsonValue);
+            producer.send(record, (metadata, exception) -> {
+                if (exception == null) {
+                    System.out.printf("Sent AzAccount record: Key=%s, Value=%s, Partition=%d, Offset=%d%n",
+                            "Key_AzAccount", jsonValue, metadata.partition(), metadata.offset());
+                } else {
+                    exception.printStackTrace();
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }finally {
+            // Đóng Producer
+            producer.close();
+        }
+    }
+    
 
     // Hàm kiểm tra trạng thái Kafka server
     private static boolean isKafkaServerUp(String bootstrapServers) {

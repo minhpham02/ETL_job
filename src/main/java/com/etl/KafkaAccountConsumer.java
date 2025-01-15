@@ -4,12 +4,13 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connector.kafka.source.KafkaSource;
+import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
 
-import com.etl.Utils.KafkaSourceUtil;
 import com.etl.entities.AccrAcctCr;
 import com.etl.entities.AzAccount;
 import com.etl.entities.DimAccount;
@@ -19,6 +20,9 @@ import oracle.jdbc.pool.OracleDataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 
 public class KafkaAccountConsumer {
     public static void main(String[] args) throws Exception {
@@ -28,32 +32,27 @@ public class KafkaAccountConsumer {
         String groupId = "flink-consumer-group";
         ObjectMapper mapper = new ObjectMapper();
 
-        // Kafka source cho AzAccount
+        KafkaSource<String> kafkaAccrAcctCrSource = KafkaSource.<String>builder().setBootstrapServers(bootstrapServers)
+                .setGroupId(groupId).setTopics("TRN_AccrAcctCr_MPC4").setStartingOffsets(OffsetsInitializer.latest())
+                .setValueOnlyDeserializer(new SimpleStringSchema()).build();
+
+        KafkaSource<String> kafkaAzAccountSource = KafkaSource.<String>builder().setBootstrapServers(bootstrapServers)
+                .setGroupId(groupId).setTopics("TRN_AzAccount_MPC4").setStartingOffsets(OffsetsInitializer.latest())
+                .setValueOnlyDeserializer(new SimpleStringSchema()).build();
+
         DataStream<AccrAcctCr> accrAcctCrStream = env
                 .fromSource(
-                        KafkaSourceUtil.createKafkaSource(bootstrapServers, groupId, "TRN_AccrAcctCr_MPC4",
-                                new SimpleStringSchema()),
+                        kafkaAccrAcctCrSource,
                         WatermarkStrategy.noWatermarks(),
                         "AccrAcctCr Source")
                 .map(json -> mapper.readValue(json, AccrAcctCr.class));
 
-        // KeyedStream<AccrAcctCr, String> keyedAccrAcctCrStream =
-        // accrAcctCrStream.keyBy(value -> "constant_key");
-        // DataStream<AccrAcctCr> latestAccrAcctCrStream =
-        // keyedAccrAcctCrStream.process(new LatestMessageProcessFunction<>());
-
         DataStream<AzAccount> azAccountStream = env
                 .fromSource(
-                        KafkaSourceUtil.createKafkaSource(bootstrapServers, groupId, "TRN_AzAccount_MPC4",
-                                new SimpleStringSchema()),
+                        kafkaAzAccountSource,
                         WatermarkStrategy.noWatermarks(),
                         "AzAccount Source")
                 .map(json -> mapper.readValue(json, AzAccount.class));
-
-        // KeyedStream<AzAccount, String> keyedAzAccountStream =
-        // azAccountStream.keyBy(value -> "constant_key");
-        // DataStream<AzAccount> lastestAzAccount = keyedAzAccountStream.process(new
-        // LatestMessageProcessFunction<>());
 
         @SuppressWarnings({ "unchecked", "rawtypes" })
         DataStream<DimAccount> dimAccountFromAzAccount = azAccountStream
@@ -65,27 +64,11 @@ public class KafkaAccountConsumer {
                 .flatMap(new DimAccountQueryFunction())
                 .returns(DimAccount.class);
 
-        DataStream<DimAccount> dimAccountStream = dimAccountFromAccrAcctCr.union(dimAccountFromAzAccount);
-
-        dimAccountStream.print();
-
         env.execute("Filtered DimAccount Streaming");
     }
 
-    // private static class LatestMessageProcessFunction<T> extends
-    // ProcessFunction<T, T> {
-    // private transient T latestMessage;
-
-    // @Override
-    // public void processElement(T value, Context ctx, Collector<T> out) {
-    // latestMessage = value;
-    // out.collect(latestMessage);
-    // }
-    // }
-
     public static class DimAccountQueryFunction<T> extends RichFlatMapFunction<T, DimAccount> {
         private transient Connection connection;
-        // private final ObjectMapper mapper = new ObjectMapper();
 
         @Override
         public void open(Configuration parameters) throws Exception {
@@ -118,7 +101,7 @@ public class KafkaAccountConsumer {
                     .prepareStatement("SELECT ACCOUNT_NO, RATE FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?");
             statement.setString(1, key);
             ResultSet resultSet = statement.executeQuery();
-            DimAccount dimAccount = null;
+            DimAccount dimAccount = new DimAccount();
             if (resultSet.next()) {
                 dimAccount = new DimAccount();
                 dimAccount.setAccountNo(resultSet.getString("ACCOUNT_NO"));
@@ -144,46 +127,59 @@ public class KafkaAccountConsumer {
                     updateStatement.setString(2, key);
                     updateStatement.executeUpdate();
                     updateStatement.close();
-                } else {
-                    
-                    PreparedStatement updateEndDtStatement = connection.prepareStatement(
-                            "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = CURRENT_DATE WHERE ACCOUNT_NO = ?");
-                    updateEndDtStatement.setString(1, key);
-                    updateEndDtStatement.executeUpdate();
-                    updateEndDtStatement.close();
 
-                    PreparedStatement selectStatement = connection.prepareStatement( "SELECT ACCOUNT_NO, RATE FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?"); 
-                    selectStatement.setString(1, key); 
-                    ResultSet resultSet1 = selectStatement.executeQuery(); 
-                    if (resultSet1.next()) { 
-                        String insertSql = "INSERT INTO FSSTRAINING.MP_DIM_ACCOUNT (ACCOUNT_TYPE, CCY, CR_GL, ACCOUNT_NO, MATURITY_DATE, RATE, RECORD_STAT, ACCOUNT_CLASS, EFF_DT, END_DT, UPDATE_TMS, ACT_F)" + 
-                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, NULL, CURRENT_TIMESTAMP, ?)";
-                        PreparedStatement insertStatement = connection.prepareStatement(insertSql); 
-                        insertStatement.setString(1, resultSet1.getString("ACCOUNT_TYPE"));
-                        insertStatement.setString(2, resultSet1.getString("CCY"));
-                        insertStatement.setString(3, resultSet1.getString("CR_GL"));
-                        insertStatement.setString(4, resultSet1.getString("ACCOUNT_NO"));
-                        insertStatement.setDate(5, resultSet1.getDate("MATURITY_DATE")); 
-                        insertStatement.setObject(6, rate);
-                        insertStatement.setString(7, resultSet1.getString("RECORD_STAT"));
-                        insertStatement.setString(8, resultSet1.getString("ACCOUNT_CLASS"));
-                        insertStatement.setString(12, resultSet1.getString("ACCOUNT_CLASS"));
-                         
-                        insertStatement.executeUpdate(); 
-                        insertStatement.close(); 
-                    } 
-                    selectStatement.close(); 
+                } else {
+ 
+                    PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?");
+                    selectStatement.setString(1, key);
+                    ResultSet resultSet1 = selectStatement.executeQuery();
+
+                    while (resultSet1.next()) {
+                        LocalDate currentDate = LocalDate.now();
+                        Timestamp effDtTimestamp = resultSet1.getTimestamp("EFF_DT"); 
+                        LocalDate effDtLocalDate = effDtTimestamp.toLocalDateTime().toLocalDate();
+
+                        if(!currentDate.equals(effDtLocalDate)){
+                            PreparedStatement updateEndDtStatement = connection.prepareStatement(
+                                "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET END_DT = CURRENT_DATE WHERE ACCOUNT_NO = ?");
+                            updateEndDtStatement.setString(1, key);
+                            updateEndDtStatement.executeUpdate();
+                            updateEndDtStatement.close();
+                                String insertSql = "INSERT INTO FSSTRAINING.MP_DIM_ACCOUNT (ACCOUNT_TYPE, CCY, CR_GL, ACCOUNT_NO, MATURITY_DATE, RATE, RECORD_STAT, ACCOUNT_CLASS, EFF_DT, END_DT, UPDATE_TMS, ACT_F)"
+                                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE, NULL, CURRENT_TIMESTAMP, ?)";
+                                PreparedStatement insertStatement = connection.prepareStatement(insertSql);
+                                insertStatement.setString(1, resultSet1.getString("ACCOUNT_TYPE"));
+                                insertStatement.setString(2, resultSet1.getString("CCY"));
+                                insertStatement.setString(3, resultSet1.getString("CR_GL"));
+                                insertStatement.setString(4, resultSet1.getString("ACCOUNT_NO"));
+                                insertStatement.setDate(5, resultSet1.getDate("MATURITY_DATE"));
+                                insertStatement.setObject(6, rate);
+                                insertStatement.setString(7, resultSet1.getString("RECORD_STAT"));
+                                insertStatement.setString(8, resultSet1.getString("ACCOUNT_CLASS"));
+                                insertStatement.setString(9, resultSet1.getString("ACT_F")); 
+
+                                insertStatement.executeUpdate();
+                                insertStatement.close();
+                        }else{
+                            PreparedStatement updateStatement = connection.prepareStatement(
+                                "UPDATE FSSTRAINING.MP_DIM_ACCOUNT SET RATE = ?, UPDATE_TMS = CURRENT_TIMESTAMP WHERE ACCOUNT_NO = ? AND END_DT IS NULL");
+                            updateStatement.setObject(1, rate);
+                            updateStatement.setString(2, key);
+                            updateStatement.executeUpdate();
+                            updateStatement.close();        
+                        } 
+                    }
+                    selectStatement.close();
                     resultSet1.close();
                 }
             }
         }
 
-        @Override
-        public void close() throws Exception {
-            super.close();
-            if (connection != null) {
-                connection.close();
-            }
+    @Override
+    public void close() throws Exception {
+        super.close();
+        if (connection != null) {
+            connection.close();
         }
     }
-}
+}}

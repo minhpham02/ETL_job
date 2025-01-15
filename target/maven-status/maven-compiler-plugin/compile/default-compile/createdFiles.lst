@@ -7,6 +7,7 @@ com\etl\entities\FactTransaction.class
 com\etl\Utils\KafkaSourceUtil.class
 com\etl\entities\DimAccount.class
 com\etl\entities\Product.class
+com\etl\KafkaProducerData.class
 com\etl\KafkaTransactionConsumer$FactTransactionQueryFunction.class
 com\etl\KafkaAccountConsumer$DimAccountQueryFunction.class
 com\etl\Utils\CustomSqlSink.class
