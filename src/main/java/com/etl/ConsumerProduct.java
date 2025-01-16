@@ -15,7 +15,9 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
@@ -28,6 +30,13 @@ public class ConsumerProduct {
     public static void main(String[] args) throws Exception {
         // Set up Flink environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.enableCheckpointing(5000, CheckpointingMode.EXACTLY_ONCE);
+        env.getCheckpointConfig().setCheckpointStorage("file:///tmp/flink-checkpoints");
+        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(1000);
+        env.getCheckpointConfig().setCheckpointTimeout(60000);
+        env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
+        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+
         String bootstrapServers = "192.168.26.181:9092";
         String groupId = "flink-consumer-group_03";
         ObjectMapper mapper = new ObjectMapper();
@@ -39,12 +48,13 @@ public class ConsumerProduct {
 
         // Create Kafka Source
         KafkaSource<String> kafkaSource = KafkaSource.<String>builder()
-            .setBootstrapServers(bootstrapServers)
-            .setGroupId(groupId)
-            .setTopics("TRN_product_01")
-            .setValueOnlyDeserializer(new SimpleStringSchema())
-            .setStartingOffsets(OffsetsInitializer.latest()) // Start from the latest offset
-            .build();
+        .setBootstrapServers(bootstrapServers)
+        .setGroupId(groupId)
+        .setTopics("TRN_product_02") // Topic name
+        .setValueOnlyDeserializer(new SimpleStringSchema())
+        .setStartingOffsets(OffsetsInitializer.committedOffsets()) // Use committed offsets
+        .setProperty("enable.auto.commit", "false") // Disable Kafka auto-commit
+        .build();
 
         // Product Stream
         DataStream<Product> productStream = env

@@ -15,7 +15,9 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
@@ -26,8 +28,14 @@ import com.etl.entities.DimAccount;
 
 public class ConsumerAccount {
     public static void main(String[] args) throws Exception {
-        // Set up Flink environment
+        // Set up Flink environment with checkpointing
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.enableCheckpointing(5000, CheckpointingMode.EXACTLY_ONCE);
+        env.getCheckpointConfig().setCheckpointStorage("file:///tmp/flink-checkpoints");
+        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(1000);
+        env.getCheckpointConfig().setCheckpointTimeout(60000);
+        env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
+        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
         String bootstrapServers = "192.168.26.181:9092";
         String groupId = "flink-consumer-group_01";
         ObjectMapper mapper = new ObjectMapper();
@@ -37,14 +45,15 @@ public class ConsumerAccount {
         kafkaProperties.put("bootstrap.servers", bootstrapServers);
         kafkaProperties.put("group.id", groupId);
 
-        // Create Kafka Source
+        // Create Kafka Source with committed offset management
         KafkaSource<String> kafkaSource = KafkaSource.<String>builder()
-            .setBootstrapServers(bootstrapServers)
-            .setGroupId(groupId)
-            .setTopics("TRN_Account_MPC4")
-            .setValueOnlyDeserializer(new SimpleStringSchema())
-            .setStartingOffsets(OffsetsInitializer.latest())
-            .build();
+                .setBootstrapServers(bootstrapServers)
+                .setGroupId(groupId)
+                .setTopics("TRN_Account_MPC4")
+                .setValueOnlyDeserializer(new SimpleStringSchema())
+                .setStartingOffsets(OffsetsInitializer.committedOffsets())
+                .setProperty("enable.auto.commit", "false")
+                .build();
 
         DataStream<Account> accountStream = env
         .fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "Account Source")

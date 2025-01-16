@@ -32,10 +32,10 @@ public class KafkaProducerData {
         Producer<String, String> producer = new KafkaProducer<>(props);
 
         // sendTellerData(producer);
-        sendAccrAcctCrData(producer);
+        // sendAccrAcctCrData(producer);
         // sendAzAccount(producer);
         // sendAccountData(producer);
-        // sendProductData(producer);
+        sendProductData(producer);
         producer.close();
         }
 
@@ -44,15 +44,15 @@ public class KafkaProducerData {
         Map<String, Object> data = new HashMap<>();
         
         // Xây dựng dữ liệu cho Account dưới dạng Map
-        data.put("id", "57");
-        data.put("customer", "Cust002");        // Tên khách hàng
-        data.put("prtCode", "PRT124");         // Mã sản phẩm
-        data.put("currency", "VND");           // Loại tiền tệ
-        data.put("openValDateBal", "111");
-        data.put("dateMaturity", "2025-01-15T10:00:00Z"); // Ngày đáo hạn
+        data.put("id", "61");
+        data.put("customer", "Cust003");        // Tên khách hàng
+        data.put("prtCode", "PRT136");         // Mã sản phẩm
+        data.put("currency", "USD");           // Loại tiền tệ
+        data.put("openValDateBal", "161");
+        data.put("dateMaturity", "2025-01-16T10:00:00Z"); // Ngày đáo hạn
         data.put("opType", "A");               // Loại thao tác (Add, Delete, etc.)
         data.put("workingBalance", "1000"); // Số dư hiện tại
-        data.put("allInOneProduct", "Product2"); // Tên sản phẩm tích hợp
+        data.put("allInOneProduct", "Product5"); // Tên sản phẩm tích hợp
         data.put("category", "A");             // Loại tài khoản
         data.put("coCode", "001");             // Mã công ty
     
@@ -78,12 +78,12 @@ public class KafkaProducerData {
     }
         
     public static void sendProductData(Producer<String, String> producer){
-        String topic = "TRN_product_01";
+        String topic = "TRN_product_02";
         Map<String, Object> data = new HashMap<>();
-        data.put("productNo", 5L);
-        data.put("locTerm", 66);
+        data.put("productNo", 3L);
+        data.put("locTerm", 55);
         data.put("category", "Saving Account");
-        data.put("subProduct", "SubProduct1");
+        data.put("subProduct", "SubProduct13");
         data.put("opType", "C");
         data.put("effectiveDate", "2025-01-01T10:00:00Z");
         data.put("endDate", null);
@@ -149,8 +149,8 @@ public class KafkaProducerData {
         String topic = "TRN_AccrAcctCr_MPC4";
     
         Map<String, Object> data = new HashMap<>();
-        data.put("accountNumber", "57");
-        data.put("crIntRate", 570);
+        data.put("accountNumber", "58");
+        data.put("crIntRate", 58);
     
         try {
             // Chuyển Map thành chuỗi JSON
