@@ -20,7 +20,6 @@ import oracle.jdbc.pool.OracleDataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 
@@ -64,7 +63,7 @@ public class KafkaAccountConsumer {
                 .flatMap(new DimAccountQueryFunction())
                 .returns(DimAccount.class);
 
-        env.execute("Filtered DimAccount Streaming");
+        env.execute("MP_DimAccount");
     }
 
     public static class DimAccountQueryFunction<T> extends RichFlatMapFunction<T, DimAccount> {
@@ -130,7 +129,7 @@ public class KafkaAccountConsumer {
 
                 } else {
  
-                    PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ?");
+                    PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM FSSTRAINING.MP_DIM_ACCOUNT WHERE ACCOUNT_NO = ? AND END_DT IS NULL");
                     selectStatement.setString(1, key);
                     ResultSet resultSet1 = selectStatement.executeQuery();
 
@@ -138,6 +137,9 @@ public class KafkaAccountConsumer {
                         LocalDate currentDate = LocalDate.now();
                         Timestamp effDtTimestamp = resultSet1.getTimestamp("EFF_DT"); 
                         LocalDate effDtLocalDate = effDtTimestamp.toLocalDateTime().toLocalDate();
+
+                        System.out.println("Current Date: " + currentDate); 
+                        System.out.println("EFF_DT Local Date: " + effDtLocalDate);
 
                         if(!currentDate.equals(effDtLocalDate)){
                             PreparedStatement updateEndDtStatement = connection.prepareStatement(

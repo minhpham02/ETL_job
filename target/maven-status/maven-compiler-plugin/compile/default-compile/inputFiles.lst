@@ -5,12 +5,10 @@ E:\Job_ETL_Account\dim_account\src\main\java\com\etl\entities\AccrAcctCr.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\KafkaTransactionConsumer.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\entities\Teller.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\KafkaProducerData.java
-E:\Job_ETL_Account\dim_account\src\main\java\com\etl\KafkaDataProducer.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\entities\DimAccount.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\entities\FactTransaction.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\entities\DimProduct.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\entities\AzAccount.java
-E:\Job_ETL_Account\dim_account\src\main\java\com\etl\KafkaProductConsumer.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\CreateKafkaProducer.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\Utils\CustomSqlSink.java
 E:\Job_ETL_Account\dim_account\src\main\java\com\etl\entities\Account.java

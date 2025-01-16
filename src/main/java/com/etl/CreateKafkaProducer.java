@@ -16,7 +16,7 @@ public class CreateKafkaProducer {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
         AdminClient adminClient = AdminClient.create(props);
-        NewTopic newTopic = new NewTopic("TRN_CompanyBranch", 10, (short) 1); 
+        NewTopic newTopic = new NewTopic("TRN_Company", 10, (short) 1); 
         adminClient.createTopics(Collections.singletonList(newTopic)); adminClient.close();
     }
 }

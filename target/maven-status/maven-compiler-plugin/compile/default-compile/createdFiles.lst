@@ -1,6 +1,7 @@
 com\etl\entities\Account.class
 com\etl\entities\AzAccount.class
 com\etl\KafkaTransactionConsumer.class
+com\etl\KafkaTransactionConsumer$1.class
 com\etl\entities\Teller.class
 com\etl\entities\DimProduct.class
 com\etl\entities\FactTransaction.class
@@ -13,7 +14,4 @@ com\etl\KafkaAccountConsumer$DimAccountQueryFunction.class
 com\etl\Utils\CustomSqlSink.class
 com\etl\entities\AccrAcctCr.class
 com\etl\KafkaAccountConsumer.class
-com\etl\KafkaDataProducer.class
-com\etl\KafkaProductConsumer$DimProductQueryFunction.class
-com\etl\KafkaProductConsumer.class
 com\etl\CreateKafkaProducer.class

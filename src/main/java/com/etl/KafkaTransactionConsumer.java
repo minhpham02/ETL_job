@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.text.SimpleDateFormat;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.kafka.source.KafkaSource;
@@ -27,25 +28,29 @@ public class KafkaTransactionConsumer {
         ObjectMapper mapper = new ObjectMapper();
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        KafkaSource<String> kafkaSource = KafkaSource.<String>builder().setBootstrapServers(bootstrapServers)
-                .setGroupId(groupId).setTopics("TRN_Teller_MPC4").setStartingOffsets(OffsetsInitializer.latest())
-                .setValueOnlyDeserializer(new SimpleStringSchema()).build();
-
-        
+        KafkaSource<String> kafkaSource = KafkaSource.<String>builder()
+                .setBootstrapServers(bootstrapServers)
+                .setGroupId(groupId)
+                .setTopics("TRN_Teller_MPC4")
+                .setStartingOffsets(OffsetsInitializer.latest())
+                .setValueOnlyDeserializer(new SimpleStringSchema())
+                .build();
 
         DataStream<Teller> tellerStream = env
-                .fromSource(
-                    kafkaSource,
-                    WatermarkStrategy.noWatermarks(),
-                    "Teller Source")
-                .map(json -> mapper.readValue(json, Teller.class));
+                .fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "Teller Source")
+                .map(new MapFunction<String, Teller>() {
+                    @Override
+                    public Teller map(String json) throws Exception {
+                        return mapper.readValue(json, Teller.class);
+                    }
+                });
 
         @SuppressWarnings({ "rawtypes", "unchecked" })
         DataStream<FactTransaction> factTransaction = tellerStream
                 .flatMap(new FactTransactionQueryFunction())
                 .returns(FactTransaction.class);
 
-        env.execute("ETL Fact Transaction");
+        env.execute("MP_FactTransaction");
     }
 
     public static class FactTransactionQueryFunction<T> extends RichFlatMapFunction<T, FactTransaction> {
@@ -62,14 +67,6 @@ public class KafkaTransactionConsumer {
 
         @Override
         public void flatMap(T value, Collector<FactTransaction> out) throws Exception {
-            // String key = "";
-
-            // if(value instanceof Teller){
-            // Teller teller = (Teller) value;
-            // key = teller.getId();
-            // }
-
-            // PreparedStatement statement = connection.prepareStatement("SELECT ID FROM");
             if (value instanceof Teller) {
                 Teller teller = (Teller) value;
                 String RecordStat = "";
@@ -97,15 +94,9 @@ public class KafkaTransactionConsumer {
                 String currency1 = teller.getCurrency1() != null ? teller.getCurrency1() : "";
                 String transactionCode = teller.getTransactionCode() != null ? teller.getTransactionCode() : "";
 
-                BigDecimal rate = (teller.getRate2() != null) ? new BigDecimal(teller.getRate2().toString())
-                        : BigDecimal.ONE;
-                BigDecimal amountFcy2 = (teller.getAmountFcy2() != null)
-                        ? new BigDecimal(teller.getAmountFcy2().toString())
-                        : BigDecimal.ZERO;
-
-                BigDecimal amountFcy1 = (teller.getAmountFcy1() != null)
-                        ? new BigDecimal(teller.getAmountFcy1().toString())
-                        : BigDecimal.ZERO;
+                BigDecimal rate = (teller.getRate2() != null) ? new BigDecimal(teller.getRate2().toString()) : BigDecimal.ONE;
+                BigDecimal amountFcy2 = (teller.getAmountFcy2() != null) ? new BigDecimal(teller.getAmountFcy2().toString()) : BigDecimal.ZERO;
+                BigDecimal amountFcy1 = (teller.getAmountFcy1() != null) ? new BigDecimal(teller.getAmountFcy1().toString()) : BigDecimal.ZERO;
                 String customer2 = teller.getCustomer2() != null ? teller.getCustomer2() : "";
 
                 if (OpType != null) {
@@ -122,34 +113,25 @@ public class KafkaTransactionConsumer {
                 String account1 = teller.getAccount1() != null ? teller.getAccount1() : "";
                 String account2 = teller.getAccount2() != null ? teller.getAccount2() : "";
 
-                // String mergeSql = "MERGE INTO FSSTRAINING.MP_FACT_TRANSACTION target "
-                //         + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
-                //         + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
-                //         + "WHEN MATCHED THEN "
-                //         + "UPDATE SET TXN_CCY = source.TXN_CCY, PRODUCT_CODE = source.PRODUCT_CODE, LCY_AMOUNT = source.LCY_AMOUNT, TXN_AMOUNT = source.TXN_AMOUNT, CST_DIM_ID = source.CST_DIM_ID, RECORD_STAT = source.RECORD_STAT, AUTH_STAT = source.AUTH_STAT, TXN_ACC = source.TXN_ACC, OFS_ACC = source.OFS_ACC, TRN_DT = source.TRN_DT, ETL_DATE = CURRENT_DATE "
-                //         + "WHEN NOT MATCHED THEN "
-                //         + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
-                //         + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
-
                 String mergeSql = "MERGE INTO FSSTRAINING.MP_FACT_TRANSACTION target "
-                + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
-                + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
-                + "WHEN MATCHED THEN "
-                + "UPDATE SET TXN_CCY = CASE WHEN target.TXN_CCY != source.TXN_CCY THEN source.TXN_CCY ELSE target.TXN_CCY END, "
-                + "PRODUCT_CODE = CASE WHEN target.PRODUCT_CODE != source.PRODUCT_CODE THEN source.PRODUCT_CODE ELSE target.PRODUCT_CODE END, "
-                + "LCY_AMOUNT = CASE WHEN (target.LCY_AMOUNT != source.LCY_AMOUNT AND source.LCY_AMOUNT !=0) THEN source.LCY_AMOUNT ELSE target.LCY_AMOUNT END, "
-                + "TXN_AMOUNT = CASE WHEN (target.TXN_AMOUNT != source.TXN_AMOUNT AND source.TXN_AMOUNT != 0) THEN source.TXN_AMOUNT ELSE target.TXN_AMOUNT END, "
-                + "CST_DIM_ID = CASE WHEN target.CST_DIM_ID != source.CST_DIM_ID THEN source.CST_DIM_ID ELSE target.CST_DIM_ID END, "
-                + "RECORD_STAT = CASE WHEN target.RECORD_STAT != source.RECORD_STAT THEN source.RECORD_STAT ELSE target.RECORD_STAT END, "
-                + "AUTH_STAT = CASE WHEN target.AUTH_STAT != source.AUTH_STAT THEN source.AUTH_STAT ELSE target.AUTH_STAT END, "
-                + "TXN_ACC = CASE WHEN target.TXN_ACC != source.TXN_ACC THEN source.TXN_ACC ELSE target.TXN_ACC END, "
-                + "OFS_ACC = CASE WHEN target.OFS_ACC != source.OFS_ACC THEN source.OFS_ACC ELSE target.OFS_ACC END, "
-                + "TRN_DT = CASE WHEN target.TRN_DT != source.TRN_DT THEN source.TRN_DT ELSE target.TRN_DT END, "
-                + "ETL_DATE = CURRENT_DATE "
-                + "WHEN NOT MATCHED THEN "
-                + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
-                + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
-        
+                        + "USING (SELECT ? AS TXN_CCY, ? AS PRODUCT_CODE, ? AS TRN_REF_NO, ? AS LCY_AMOUNT, ? AS TXN_AMOUNT, ? AS CST_DIM_ID, ? AS RECORD_STAT, ? AS AUTH_STAT, ? AS TXN_ACC, ? AS OFS_ACC, ? AS TRN_DT FROM DUAL) source "
+                        + "ON (target.TRN_REF_NO = source.TRN_REF_NO) "
+                        + "WHEN MATCHED THEN "
+                        + "UPDATE SET TXN_CCY = CASE WHEN target.TXN_CCY != source.TXN_CCY THEN source.TXN_CCY ELSE target.TXN_CCY END, "
+                        + "PRODUCT_CODE = CASE WHEN target.PRODUCT_CODE != source.PRODUCT_CODE THEN source.PRODUCT_CODE ELSE target.PRODUCT_CODE END, "
+                        + "LCY_AMOUNT = CASE WHEN (target.LCY_AMOUNT != source.LCY_AMOUNT AND source.LCY_AMOUNT !=0) THEN source.LCY_AMOUNT ELSE target.LCY_AMOUNT END, "
+                        + "TXN_AMOUNT = CASE WHEN (target.TXN_AMOUNT != source.TXN_AMOUNT AND source.TXN_AMOUNT != 0) THEN source.TXN_AMOUNT ELSE target.TXN_AMOUNT END, "
+                        + "CST_DIM_ID = CASE WHEN target.CST_DIM_ID != source.CST_DIM_ID THEN source.CST_DIM_ID ELSE target.CST_DIM_ID END, "
+                        + "RECORD_STAT = CASE WHEN target.RECORD_STAT != source.RECORD_STAT THEN source.RECORD_STAT ELSE target.RECORD_STAT END, "
+                        + "AUTH_STAT = CASE WHEN target.AUTH_STAT != source.AUTH_STAT THEN source.AUTH_STAT ELSE target.AUTH_STAT END, "
+                        + "TXN_ACC = CASE WHEN target.TXN_ACC != source.TXN_ACC THEN source.TXN_ACC ELSE target.TXN_ACC END, "
+                        + "OFS_ACC = CASE WHEN target.OFS_ACC != source.OFS_ACC THEN source.OFS_ACC ELSE target.OFS_ACC END, "
+                        + "TRN_DT = CASE WHEN target.TRN_DT != source.TRN_DT THEN source.TRN_DT ELSE target.TRN_DT END, "
+                        + "ETL_DATE = CURRENT_DATE "
+                        + "WHEN NOT MATCHED THEN "
+                        + "INSERT (TXN_CCY, PRODUCT_CODE, TRN_REF_NO, LCY_AMOUNT, TXN_AMOUNT, CST_DIM_ID, RECORD_STAT, AUTH_STAT, TXN_ACC, OFS_ACC, TRN_DT, ETL_DATE) "
+                        + "VALUES (source.TXN_CCY, source.PRODUCT_CODE, source.TRN_REF_NO, source.LCY_AMOUNT, source.TXN_AMOUNT, source.CST_DIM_ID, source.RECORD_STAT, source.AUTH_STAT, source.TXN_ACC, source.OFS_ACC, source.TRN_DT, CURRENT_DATE)";
+
                 PreparedStatement statement = connection.prepareStatement(mergeSql);
                 statement.setString(1, currency1);
                 statement.setString(2, transactionCode);
